@@ -14,6 +14,10 @@ rewriting your files, and can also print any struct's offset/size/align/padding
 layout. The analysis comes straight from the upstream analyzer, so results match
 `fieldalignment` exactly — only the presentation is new.
 
+<p align="center">
+  <img src="docs/diff.png" alt="structalign colored unified-diff output against the bundled sample" width="640">
+</p>
+
 ## Quick start
 
 ```sh
