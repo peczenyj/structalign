@@ -45,31 +45,59 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// version is the tool's version. It is overridden at release time via
+// -ldflags "-X main.version=...", and defaults to "dev" for source builds.
+var version = "dev"
+
+// config holds all command-line options. Flags bind directly to these fields
+// via flag.<Type>Var, so the rest of main works with values, not pointers.
+type config struct {
+	diff        string // -diff:    unified | side | none
+	width       int    // -width:   per-side column width for side mode (0 = auto)
+	color       string // -color:   auto | always | never
+	typeFilter  string // -type:    comma-separated glob patterns, empty = all
+	inspect     bool   // -inspect: print layout instead of diffing
+	verbose     bool   // -verbose: in inspect mode, padding on its own `_` line
+	tags        bool   // -tags:    preserve struct field tags in output
+	showVersion bool   // -version: print version and exit
+}
+
 func main() {
-	diffStyle := flag.String("diff", "unified", "diff style: unified | side | none")
-	width := flag.Int("width", resolveWidth(), "column width per side for -diff=side")
-	colorFlag := flag.String("color", "auto", "colorize: auto | always | never")
-	typeFilter := flag.String("type", "", "only consider named structs matching this comma-separated list of glob patterns (e.g. \"*Request,Config\"); empty means all")
-	inspectMode := flag.Bool("inspect", false, "inspect layout: print each field's offset, size, alignment, and padding (no reordering)")
-	verbose := flag.Bool("verbose", false, "in -inspect mode, show padding on its own `_` line instead of folded into the field comment")
-	keepTags := flag.Bool("tags", false, "preserve struct field tags in output (default: strip them)")
+	var cfg config
+	flag.StringVar(&cfg.diff, "diff", "unified", "diff style: unified | side | none")
+	flag.IntVar(&cfg.width, "width", 0, "column width per side for -diff=side (0 = auto from terminal)")
+	flag.StringVar(&cfg.color, "color", "auto", "colorize: auto | always | never")
+	flag.StringVar(&cfg.typeFilter, "type", "", "only consider named structs matching this comma-separated list of glob patterns (e.g. \"*Request,Config\"); empty means all")
+	flag.BoolVar(&cfg.inspect, "inspect", false, "inspect layout: print each field's offset, size, alignment, and padding (no reordering)")
+	flag.BoolVar(&cfg.verbose, "verbose", false, "in -inspect mode, show padding on its own _ line instead of folded into the field comment")
+	flag.BoolVar(&cfg.tags, "tags", false, "preserve struct field tags in output (default: strip them)")
+	flag.BoolVar(&cfg.showVersion, "version", false, "print version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(os.Stderr, "usage: structalign [flags] <file.go | dir> [...]\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if cfg.showVersion {
+		fmt.Println(version)
+		return
+	}
 	if flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
 
-	patterns := parsePatterns(*typeFilter)
-	color := wantColor(*colorFlag)
+	// -width defaults to 0 ("auto") so -h shows no misleading fixed number;
+	// resolve it from the terminal here, once the flags are parsed.
+	if cfg.width <= 0 {
+		cfg.width = resolveWidth()
+	}
+	patterns := parsePatterns(cfg.typeFilter)
+	color := wantColor(cfg.color)
 
 	var totalFindings int
 	for _, arg := range flag.Args() {
-		findings, err := process(arg, *diffStyle, *width, color, patterns, *inspectMode, *verbose, *keepTags)
+		findings, err := process(arg, cfg.diff, cfg.width, color, patterns, cfg.inspect, cfg.verbose, cfg.tags)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "structalign: %s: %v\n", arg, err)
 			continue
@@ -78,7 +106,7 @@ func main() {
 	}
 
 	if totalFindings == 0 {
-		if *inspectMode {
+		if cfg.inspect {
 			fmt.Fprintln(os.Stderr, "no matching structs found")
 		} else {
 			fmt.Fprintln(os.Stderr, "no struct reorderings found")
@@ -87,7 +115,7 @@ func main() {
 	// Exit non-zero only for the diff modes, where a finding means "could be
 	// improved" (CI-friendly). Inspect mode is purely informational, so it
 	// always exits 0 when it ran successfully.
-	if totalFindings > 0 && !*inspectMode {
+	if totalFindings > 0 && !cfg.inspect {
 		os.Exit(1)
 	}
 }
@@ -159,7 +187,7 @@ func process(path, diffStyle string, width int, color bool, patterns []string, i
 		Pkg:        pkg,
 		TypesInfo:  info,
 		TypesSizes: sizes,
-		ResultOf: map[*analysis.Analyzer]interface{}{
+		ResultOf: map[*analysis.Analyzer]any{
 			inspect.Analyzer: insp,
 		},
 		Report: func(d analysis.Diagnostic) {
@@ -213,7 +241,7 @@ func process(path, diffStyle string, width int, color bool, patterns []string, i
 // glob patterns. An empty input yields nil (meaning "match everything").
 func parsePatterns(s string) []string {
 	var out []string
-	for _, p := range strings.Split(s, ",") {
+	for p := range strings.SplitSeq(s, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}
@@ -386,6 +414,13 @@ func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, co
 		if !ok {
 			continue
 		}
+		// Generic types have no concrete layout until instantiated: a field
+		// whose type is a type parameter has no defined size/alignment, and
+		// asking go/types for it panics. Skip them with a note.
+		if named, ok := tn.Type().(*types.Named); ok && named.TypeParams().Len() > 0 {
+			fmt.Fprintf(os.Stderr, "structalign: skipping generic type %s (no concrete layout until instantiated)\n", n)
+			continue
+		}
 		st, ok := tn.Type().Underlying().(*types.Struct)
 		if !ok {
 			continue
@@ -403,7 +438,7 @@ func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, co
 func computeLayout(st *types.Struct, sizes types.Sizes) (fields []layoutField, total, align int64) {
 	nf := st.NumFields()
 	vars := make([]*types.Var, nf)
-	for i := 0; i < nf; i++ {
+	for i := range nf {
 		vars[i] = st.Field(i)
 	}
 	offsets := sizes.Offsetsof(vars)
@@ -411,7 +446,7 @@ func computeLayout(st *types.Struct, sizes types.Sizes) (fields []layoutField, t
 	align = sizes.Alignof(st)
 
 	fields = make([]layoutField, nf)
-	for i := 0; i < nf; i++ {
+	for i := range nf {
 		fsize := sizes.Sizeof(vars[i].Type())
 		lf := layoutField{
 			name:   vars[i].Name(),
@@ -609,11 +644,8 @@ func renderSideBySide(a, b string, width int, color bool) {
 				adds = append(adds, ops[i].text)
 				i++
 			}
-			n := len(dels)
-			if len(adds) > n {
-				n = len(adds)
-			}
-			for k := 0; k < n; k++ {
+			n := max(len(dels), len(adds))
+			for k := range n {
 				var l, r string
 				var lc, rc string
 				if k < len(dels) {
@@ -716,7 +748,7 @@ func lcsDiff(a, b []string) []diffOp {
 	// coincide with entries in lineStart.
 	offsetToLine := func(o int) int {
 		// linear scan is fine: structs are tiny.
-		for i := 0; i < len(a); i++ {
+		for i := range a {
 			if lineStart[i] == o {
 				return i
 			}

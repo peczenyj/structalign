@@ -7,3 +7,6 @@
 # Go test/build output
 *.out
 *.test
+
+# GoReleaser output
+/dist/

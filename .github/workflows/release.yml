@@ -1,0 +1,45 @@
+name: Release
+
+# git-flow finishes a release by creating a vX.Y.Z tag on main; pushing that
+# tag triggers GoReleaser, which builds the cross-platform binaries, uploads
+# them with checksums, and publishes the GitHub Release (notes are GitHub's
+# native generated notes, per .goreleaser.yaml's changelog.use: github-native).
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the GitHub Release and upload assets
+  id-token: write # OIDC token for keyless (Sigstore) signing of the attestation
+  attestations: write # store the SLSA build-provenance attestation
+
+jobs:
+  goreleaser:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: stable
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # SLSA build provenance (Build L1): a signed attestation describing how
+      # each release artifact was built. Verify with:
+      #   gh attestation verify <artifact> --repo peczenyj/structalign
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt

@@ -1,6 +1,6 @@
 module github.com/peczenyj/structalign
 
-go 1.26.3
+go 1.25.0
 
 require (
 	github.com/aymanbagabas/go-udiff v0.4.1

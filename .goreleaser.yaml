@@ -1,0 +1,55 @@
+# GoReleaser configuration (schema v2). See https://goreleaser.com
+#
+# Local dry run:  make snapshot   (goreleaser release --snapshot --clean)
+# Validate:       make release-check
+# Real release is driven by .github/workflows/release.yml on a v* tag push.
+version: 2
+
+project_name: structalign
+
+before:
+  hooks:
+    # Use download (not tidy): tidy can modify tracked files and dirty the
+    # git tree, which GoReleaser refuses to release from.
+    - go mod download
+
+builds:
+  - id: structalign
+    main: ./cmd/structalign
+    binary: structalign
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - id: structalign
+    formats: [tar.gz]
+    # Use zip on Windows.
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+
+# Release notes come from GitHub's native generated notes, matching the
+# previous workflow (and go-claimcheck). The in-repo CHANGELOG.md remains
+# git-cliff-generated and is bundled in the archives above.
+changelog:
+  use: github-native
+
+release:
+  github:
+    owner: peczenyj
+    name: structalign
+  draft: false
+  prerelease: auto
