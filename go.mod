@@ -9,7 +9,11 @@ require (
 )
 
 require (
+	github.com/dmarkham/enumer v1.6.1 // indirect
+	github.com/pascaldekloe/name v1.0.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 )
+
+tool github.com/dmarkham/enumer

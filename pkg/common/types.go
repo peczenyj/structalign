@@ -51,12 +51,3 @@ type Layout struct {
 	Padding int64 // total padding across all fields
 	Fields  []LayoutField
 }
-
-// DiffStyle selects how a Finding is rendered.
-type DiffStyle string
-
-const (
-	DiffUnified DiffStyle = "unified"
-	DiffSide    DiffStyle = "side"
-	DiffNone    DiffStyle = "none"
-)
