@@ -1,0 +1,46 @@
+---
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  default: standard
+  enable:
+    - gocritic
+    - revive
+    - misspell
+    - gocyclo
+    - bodyclose
+    - errorlint
+    - prealloc
+  settings:
+    gocyclo:
+      min-complexity: 15
+    revive:
+      severity: warning
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+      # TEMPORARY: the monolithic cmd/structalign/main.go has a few high-complexity
+      # render/diff functions. These are split into focused packages during the
+      # v0.3.0 refactor; remove this block once main.go is reduced.
+      - path: cmd/structalign/main\.go
+        linters:
+          - gocyclo
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/peczenyj/structalign)
