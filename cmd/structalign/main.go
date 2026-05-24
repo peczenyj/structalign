@@ -32,6 +32,7 @@ import (
 	"go/parser"
 	"go/token"
 	"go/types"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -121,9 +122,9 @@ func main() {
 			continue
 		}
 		if cfg.inspect {
-			totalFindings += inspectStructs(pkg.Types, pkg.TypesSizes, typeGlobs, color, cfg.verbose, cfg.tags)
+			totalFindings += inspectStructs(os.Stdout, pkg.Types, pkg.TypesSizes, typeGlobs, color, cfg.verbose, cfg.tags)
 		} else {
-			totalFindings += diffPackage(pkg, cfg.diff, cfg.width, color, typeGlobs, cfg.tags)
+			totalFindings += diffPackage(os.Stdout, pkg, cfg.diff, cfg.width, color, typeGlobs, cfg.tags)
 		}
 	}
 
@@ -187,7 +188,7 @@ func normalizeArgs(args []string) []string {
 // renders each suggested reordering. If patterns is non-empty, only structs
 // whose enclosing named type matches one of the glob patterns are considered.
 // It returns the number of findings rendered.
-func diffPackage(pkg *packages.Package, diffStyle string, width int, color bool, patterns []string, keepTags bool) int {
+func diffPackage(w io.Writer, pkg *packages.Package, diffStyle string, width int, color bool, patterns []string, keepTags bool) int {
 	if len(pkg.Syntax) == 0 {
 		return 0
 	}
@@ -258,7 +259,7 @@ func diffPackage(pkg *packages.Package, diffStyle string, width int, color bool,
 	})
 
 	for _, f := range findings {
-		render(f, diffStyle, width, color)
+		render(w, f, diffStyle, width, color)
 	}
 	return len(findings)
 }
@@ -384,7 +385,7 @@ type layoutField struct {
 // inspectStructs finds every named struct type in pkg (filtered by patterns),
 // computes its layout via the type sizes, and prints it. Returns the count of
 // structs printed.
-func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, color bool, verbose bool, keepTags bool) int {
+func inspectStructs(w io.Writer, pkg *types.Package, sizes types.Sizes, patterns []string, color bool, verbose bool, keepTags bool) int {
 	scope := pkg.Scope()
 	var names []string
 	for _, n := range scope.Names() {
@@ -413,7 +414,7 @@ func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, co
 		if !ok {
 			continue
 		}
-		renderLayout(n, st, sizes, color, verbose, keepTags)
+		renderLayout(w, n, st, sizes, color, verbose, keepTags)
 		printed++
 	}
 	return printed
@@ -475,7 +476,7 @@ func qualifierForLayout(v *types.Var) types.Qualifier {
 // declaration with per-field `// size: N, align: M` comments, column-aligned so
 // the comments line up. Padding is shown either folded onto the preceding
 // field's comment (default) or broken onto its own `_` line (verbose).
-func renderLayout(name string, st *types.Struct, sizes types.Sizes, color bool, verbose bool, keepTags bool) {
+func renderLayout(w io.Writer, name string, st *types.Struct, sizes types.Sizes, color bool, verbose bool, keepTags bool) {
 	fields, total, align := computeLayout(st, sizes)
 
 	var totalPad int64
@@ -501,16 +502,16 @@ func renderLayout(name string, st *types.Struct, sizes types.Sizes, color bool, 
 	// Header: the struct opening line carries size/align/padding.
 	header := fmt.Sprintf("type %s struct { // size: %d, align: %d, padding: %d",
 		name, total, align, totalPad)
-	fmt.Println(paint(color, cBold+cCyan, header))
+	fmt.Fprintln(w, paint(color, cBold+cCyan, header))
 
 	for i, f := range fields {
 		base := fmt.Sprintf("size: %2d, align: %d", f.size, f.align)
 		if verbose {
 			// Field line carries no padding; padding gets its own `_` line.
-			fmt.Printf("\t%-*s // %s\n", declWidth, decls[i], base)
+			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], base)
 			if f.padding > 0 {
 				pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.padding)
-				fmt.Println(paint(color, cRed, pad))
+				fmt.Fprintln(w, paint(color, cRed, pad))
 			}
 		} else {
 			// Padding folds onto the field's own comment.
@@ -518,11 +519,11 @@ func renderLayout(name string, st *types.Struct, sizes types.Sizes, color bool, 
 			if f.padding > 0 {
 				comment = paint(color, cRed, fmt.Sprintf("%s, padding: %d", base, f.padding))
 			}
-			fmt.Printf("\t%-*s // %s\n", declWidth, decls[i], comment)
+			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], comment)
 		}
 	}
-	fmt.Println("}")
-	fmt.Println()
+	fmt.Fprintln(w, "}")
+	fmt.Fprintln(w)
 }
 
 // --- rendering --------------------------------------------------------------
@@ -558,7 +559,7 @@ func relPath(name string) string {
 	return rel
 }
 
-func render(f finding, style string, width int, color bool) {
+func render(w io.Writer, f finding, style string, width int, color bool) {
 	loc := f.fset.Position(f.pos)
 	file := relPath(loc.Filename)
 	var header string
@@ -567,24 +568,24 @@ func render(f finding, style string, width int, color bool) {
 	} else {
 		header = fmt.Sprintf("%s:%d:%d: %s", file, loc.Line, loc.Column, f.message)
 	}
-	fmt.Println(paint(color, cBold+cCyan, header))
+	fmt.Fprintln(w, paint(color, cBold+cCyan, header))
 
 	if f.original == "" || f.proposed == "" {
-		fmt.Println("  (no suggested fix produced)")
-		fmt.Println()
+		fmt.Fprintln(w, "  (no suggested fix produced)")
+		fmt.Fprintln(w)
 		return
 	}
 
 	switch style {
 	case "none":
 		// just the proposed struct
-		fmt.Println(indent(f.proposed, "  "))
+		fmt.Fprintln(w, indent(f.proposed, "  "))
 	case "side":
-		renderSideBySide(f.original, f.proposed, width, color)
+		renderSideBySide(w, f.original, f.proposed, width, color)
 	default: // unified
-		renderUnified(f.original, f.proposed, color)
+		renderUnified(w, f.original, f.proposed, color)
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 }
 
 func indent(s, pad string) string {
@@ -598,23 +599,23 @@ func indent(s, pad string) string {
 // renderUnified prints a minimal line-based unified diff. We use a simple
 // longest-common-subsequence over lines, which is fine for the small,
 // reordered struct bodies we deal with here.
-func renderUnified(a, b string, color bool) {
+func renderUnified(w io.Writer, a, b string, color bool) {
 	al := strings.Split(a, "\n")
 	bl := strings.Split(b, "\n")
 	ops := lcsDiff(al, bl)
 	for _, op := range ops {
 		switch op.kind {
 		case opEqual:
-			fmt.Printf("  %s\n", op.text)
+			fmt.Fprintf(w, "  %s\n", op.text)
 		case opDel:
-			fmt.Println(paint(color, cRed, "- "+op.text))
+			fmt.Fprintln(w, paint(color, cRed, "- "+op.text))
 		case opAdd:
-			fmt.Println(paint(color, cGreen, "+ "+op.text))
+			fmt.Fprintln(w, paint(color, cGreen, "+ "+op.text))
 		}
 	}
 }
 
-func renderSideBySide(a, b string, width int, color bool) {
+func renderSideBySide(w io.Writer, a, b string, width int, color bool) {
 	al := strings.Split(a, "\n")
 	bl := strings.Split(b, "\n")
 	ops := lcsDiff(al, bl)
@@ -673,11 +674,11 @@ func renderSideBySide(a, b string, width int, color bool) {
 	// mirrors sep as "─┼─" so the ┼ lands directly under every │.
 	// Pad the header text manually (not via %-*s) so it stays correct even
 	// when paint() wraps it in ANSI escapes, which %-*s would miscount.
-	fmt.Printf("  %s%s%s\n",
+	fmt.Fprintf(w, "  %s%s%s\n",
 		paint(color, cDim, truncPad("current", width)),
 		sep,
 		paint(color, cDim, "proposed"))
-	fmt.Printf("  %s\n", paint(color, cDim,
+	fmt.Fprintf(w, "  %s\n", paint(color, cDim,
 		strings.Repeat("─", width)+"─┼─"+strings.Repeat("─", width)))
 	for _, r := range rows {
 		left := truncPad(r.l, width)
@@ -688,7 +689,7 @@ func renderSideBySide(a, b string, width int, color bool) {
 		if r.rc != "" {
 			right = paint(color, r.rc, right)
 		}
-		fmt.Printf("  %s%s%s\n", left, sep, right)
+		fmt.Fprintf(w, "  %s%s%s\n", left, sep, right)
 	}
 }
 

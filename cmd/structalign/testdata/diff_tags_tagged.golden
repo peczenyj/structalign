@@ -1,0 +1,12 @@
+_example/types.go:29:13: Tagged: struct of size 48 could be 32
+  struct {
+- 	Flag    bool   `json:"flag"`
++ 	Ptr     *uint64
+  	ID      string `json:"id" db:"id"`
+  	Count   uint32 `json:"count"`
+- 	Ptr     *uint64
+- 	Enabled bool `json:"enabled"`
++ 	Flag    bool   `json:"flag"`
++ 	Enabled bool   `json:"enabled"`
+  }
+

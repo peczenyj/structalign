@@ -20,15 +20,27 @@ The module path is `github.com/peczenyj/structalign`, so the install target is
 ```
 go build -o structalign ./cmd/structalign     # produces ./structalign
 go vet ./...
+go test ./...                                  # unit + golden tests
+go test ./... -update                          # regenerate testdata/*.golden
 go run ./cmd/structalign [flags] [packages]   # packages: ./..., import paths, dirs, files
 go run ./cmd/structalign ./_example            # exercise diff mode
 go run ./cmd/structalign -inspect ./_example   # exercise inspect mode
 ```
 
-There are **no tests** in this repo. Verify changes by running the binary against
-`./_example` and eyeballing output. Exit code is meaningful: diff modes exit **1**
-when any reordering is found (CI-friendly), **0** when none; `-inspect` always
-exits 0.
+Tests live in `cmd/structalign/main_test.go` (same `package main`, so they reach
+unexported funcs). Two layers: table-driven unit tests for the pure helpers
+(`parsePatterns`, `matchAny`, `normalizeArgs`, `stripStructTags`, `relPath`,
+`lcsDiff`, `renderUnified`), and golden-file integration tests that run the real
+`loadPackages` → `diffPackage`/`inspectStructs` pipeline against `./_example` and
+compare to `testdata/*.golden`. The golden test `t.Chdir`s to the repo root so
+`./_example` resolves and paths render relative; regenerate fixtures with
+`-update`. Golden cases assume a **64-bit target** (`unsafe.Sizeof(uintptr) == 8`)
+and `t.Skip` otherwise, since `types.Sizes` depends on pointer width. Rendering is
+testable because `diffPackage`/`inspectStructs`/`render*` take an `io.Writer`
+(`main` passes `os.Stdout`).
+
+Exit code is meaningful: diff modes exit **1** when any reordering is found
+(CI-friendly), **0** when none; `-inspect` always exits 0.
 
 ## Core architecture
 

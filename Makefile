@@ -27,6 +27,14 @@ fmt-check: ## Fail if any file is not gofmt'd
 		echo "Not gofmt'd:"; echo "$$unformatted"; exit 1; \
 	fi
 
+.PHONY: test
+test: ## Run the unit and golden tests
+	go test ./...
+
+.PHONY: test-update
+test-update: ## Regenerate the .golden fixtures under testdata
+	go test ./... -update
+
 .PHONY: smoke
 smoke: ## Exercise both modes against the bundled sample
 	go run $(PKG) -inspect $(SAMPLE)
@@ -35,7 +43,7 @@ smoke: ## Exercise both modes against the bundled sample
 	fi
 
 .PHONY: check
-check: fmt-check vet build smoke ## Run everything CI runs
+check: fmt-check vet build test smoke ## Run everything CI runs
 
 .PHONY: screenshot
 screenshot: build ## Regenerate docs/diff.png from colored output (needs python3 + pillow)
