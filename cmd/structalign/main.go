@@ -45,14 +45,27 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// config holds all command-line options. Flags bind directly to these fields
+// via flag.<Type>Var, so the rest of main works with values, not pointers.
+type config struct {
+	diff       string // -diff:    unified | side | none
+	width      int    // -width:   per-side column width for side mode (0 = auto)
+	color      string // -color:   auto | always | never
+	typeFilter string // -type:    comma-separated glob patterns, empty = all
+	inspect    bool   // -inspect: print layout instead of diffing
+	verbose    bool   // -verbose: in inspect mode, padding on its own `_` line
+	tags       bool   // -tags:    preserve struct field tags in output
+}
+
 func main() {
-	diffStyle := flag.String("diff", "unified", "diff style: unified | side | none")
-	width := flag.Int("width", resolveWidth(), "column width per side for -diff=side")
-	colorFlag := flag.String("color", "auto", "colorize: auto | always | never")
-	typeFilter := flag.String("type", "", "only consider named structs matching this comma-separated list of glob patterns (e.g. \"*Request,Config\"); empty means all")
-	inspectMode := flag.Bool("inspect", false, "inspect layout: print each field's offset, size, alignment, and padding (no reordering)")
-	verbose := flag.Bool("verbose", false, "in -inspect mode, show padding on its own `_` line instead of folded into the field comment")
-	keepTags := flag.Bool("tags", false, "preserve struct field tags in output (default: strip them)")
+	var cfg config
+	flag.StringVar(&cfg.diff, "diff", "unified", "diff style: unified | side | none")
+	flag.IntVar(&cfg.width, "width", 0, "column width per side for -diff=side (0 = auto from terminal)")
+	flag.StringVar(&cfg.color, "color", "auto", "colorize: auto | always | never")
+	flag.StringVar(&cfg.typeFilter, "type", "", "only consider named structs matching this comma-separated list of glob patterns (e.g. \"*Request,Config\"); empty means all")
+	flag.BoolVar(&cfg.inspect, "inspect", false, "inspect layout: print each field's offset, size, alignment, and padding (no reordering)")
+	flag.BoolVar(&cfg.verbose, "verbose", false, "in -inspect mode, show padding on its own _ line instead of folded into the field comment")
+	flag.BoolVar(&cfg.tags, "tags", false, "preserve struct field tags in output (default: strip them)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(os.Stderr, "usage: structalign [flags] <file.go | dir> [...]\n\n")
@@ -64,12 +77,17 @@ func main() {
 		os.Exit(2)
 	}
 
-	patterns := parsePatterns(*typeFilter)
-	color := wantColor(*colorFlag)
+	// -width defaults to 0 ("auto") so -h shows no misleading fixed number;
+	// resolve it from the terminal here, once the flags are parsed.
+	if cfg.width <= 0 {
+		cfg.width = resolveWidth()
+	}
+	patterns := parsePatterns(cfg.typeFilter)
+	color := wantColor(cfg.color)
 
 	var totalFindings int
 	for _, arg := range flag.Args() {
-		findings, err := process(arg, *diffStyle, *width, color, patterns, *inspectMode, *verbose, *keepTags)
+		findings, err := process(arg, cfg.diff, cfg.width, color, patterns, cfg.inspect, cfg.verbose, cfg.tags)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "structalign: %s: %v\n", arg, err)
 			continue
@@ -78,7 +96,7 @@ func main() {
 	}
 
 	if totalFindings == 0 {
-		if *inspectMode {
+		if cfg.inspect {
 			fmt.Fprintln(os.Stderr, "no matching structs found")
 		} else {
 			fmt.Fprintln(os.Stderr, "no struct reorderings found")
@@ -87,7 +105,7 @@ func main() {
 	// Exit non-zero only for the diff modes, where a finding means "could be
 	// improved" (CI-friendly). Inspect mode is purely informational, so it
 	// always exits 0 when it ran successfully.
-	if totalFindings > 0 && !*inspectMode {
+	if totalFindings > 0 && !cfg.inspect {
 		os.Exit(1)
 	}
 }
