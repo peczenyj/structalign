@@ -414,6 +414,13 @@ func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, co
 		if !ok {
 			continue
 		}
+		// Generic types have no concrete layout until instantiated: a field
+		// whose type is a type parameter has no defined size/alignment, and
+		// asking go/types for it panics. Skip them with a note.
+		if named, ok := tn.Type().(*types.Named); ok && named.TypeParams().Len() > 0 {
+			fmt.Fprintf(os.Stderr, "structalign: skipping generic type %s (no concrete layout until instantiated)\n", n)
+			continue
+		}
 		st, ok := tn.Type().Underlying().(*types.Struct)
 		if !ok {
 			continue
