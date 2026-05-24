@@ -1,0 +1,9 @@
+# Compiled binary (build artifact)
+/structalign
+
+# Vendored dependencies — resolved from go.mod/go.sum instead
+/vendor/
+
+# Go test/build output
+*.out
+*.test
