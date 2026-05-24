@@ -22,3 +22,12 @@ type Good struct {
 	A bool
 	C bool
 }
+
+// A tagged struct, to demonstrate -tags output and tag stripping.
+type Tagged struct {
+	Flag    bool   `json:"flag"`
+	ID      string `json:"id" db:"id"`
+	Count   uint32 `json:"count"`
+	Ptr     *uint64
+	Enabled bool `json:"enabled"`
+}
