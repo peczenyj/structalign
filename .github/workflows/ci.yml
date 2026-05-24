@@ -11,12 +11,17 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ["1.25.0", "stable"]
+    name: build (go ${{ matrix.go-version }})
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version: ${{ matrix.go-version }}
 
       - name: Verify formatting
         run: |
