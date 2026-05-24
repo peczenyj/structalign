@@ -10,7 +10,9 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: write # create the GitHub Release and upload assets
+  id-token: write # OIDC token for keyless (Sigstore) signing of the attestation
+  attestations: write # store the SLSA build-provenance attestation
 
 jobs:
   goreleaser:
@@ -31,3 +33,13 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # SLSA build provenance (Build L1): a signed attestation describing how
+      # each release artifact was built. Verify with:
+      #   gh attestation verify <artifact> --repo peczenyj/structalign
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
