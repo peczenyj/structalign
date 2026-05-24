@@ -16,6 +16,12 @@ linters:
     - errorlint
     - prealloc
   settings:
+    errcheck:
+      # Writes to an io.Writer/os.Stdout via fmt.Fprint* are best-effort; a failed
+      # write to the output stream is not actionable for this CLI.
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
     gocyclo:
       min-complexity: 15
     revive:

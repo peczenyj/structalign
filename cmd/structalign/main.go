@@ -499,16 +499,16 @@ func renderLayout(w io.Writer, name string, st *types.Struct, sizes types.Sizes,
 	// Header: the struct opening line carries size/align/padding.
 	header := fmt.Sprintf("type %s struct { // size: %d, align: %d, padding: %d",
 		name, total, align, totalPad)
-	fmt.Fprintln(w, paint(color, cBold+cCyan, header)) //nolint:errcheck // best-effort write to output
+	fmt.Fprintln(w, paint(color, cBold+cCyan, header))
 
 	for i, f := range fields {
 		base := fmt.Sprintf("size: %2d, align: %d", f.size, f.align)
 		if verbose {
 			// Field line carries no padding; padding gets its own `_` line.
-			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], base) //nolint:errcheck // best-effort write to output
+			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], base)
 			if f.padding > 0 {
 				pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.padding)
-				fmt.Fprintln(w, paint(color, cRed, pad)) //nolint:errcheck // best-effort write to output
+				fmt.Fprintln(w, paint(color, cRed, pad))
 			}
 		} else {
 			// Padding folds onto the field's own comment.
@@ -516,11 +516,11 @@ func renderLayout(w io.Writer, name string, st *types.Struct, sizes types.Sizes,
 			if f.padding > 0 {
 				comment = paint(color, cRed, fmt.Sprintf("%s, padding: %d", base, f.padding))
 			}
-			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], comment) //nolint:errcheck // best-effort write to output
+			fmt.Fprintf(w, "\t%-*s // %s\n", declWidth, decls[i], comment)
 		}
 	}
-	fmt.Fprintln(w, "}") //nolint:errcheck // best-effort write to output
-	fmt.Fprintln(w)      //nolint:errcheck // best-effort write to output
+	fmt.Fprintln(w, "}")
+	fmt.Fprintln(w)
 }
 
 // --- rendering --------------------------------------------------------------
@@ -565,24 +565,24 @@ func render(w io.Writer, f finding, style string, width int, color bool) {
 	} else {
 		header = fmt.Sprintf("%s:%d:%d: %s", file, loc.Line, loc.Column, f.message)
 	}
-	fmt.Fprintln(w, paint(color, cBold+cCyan, header)) //nolint:errcheck // best-effort write to output
+	fmt.Fprintln(w, paint(color, cBold+cCyan, header))
 
 	if f.original == "" || f.proposed == "" {
-		fmt.Fprintln(w, "  (no suggested fix produced)") //nolint:errcheck // best-effort write to output
-		fmt.Fprintln(w)                                  //nolint:errcheck // best-effort write to output
+		fmt.Fprintln(w, "  (no suggested fix produced)")
+		fmt.Fprintln(w)
 		return
 	}
 
 	switch style {
 	case "none":
 		// just the proposed struct
-		fmt.Fprintln(w, indent(f.proposed, "  ")) //nolint:errcheck // best-effort write to output
+		fmt.Fprintln(w, indent(f.proposed, "  "))
 	case "side":
 		renderSideBySide(w, f.original, f.proposed, width, color)
 	default: // unified
 		renderUnified(w, f.original, f.proposed, color)
 	}
-	fmt.Fprintln(w) //nolint:errcheck // best-effort write to output
+	fmt.Fprintln(w)
 }
 
 func indent(s, pad string) string {
@@ -603,11 +603,11 @@ func renderUnified(w io.Writer, a, b string, color bool) {
 	for _, op := range ops {
 		switch op.kind {
 		case opEqual:
-			fmt.Fprintf(w, "  %s\n", op.text) //nolint:errcheck // best-effort write to output
+			fmt.Fprintf(w, "  %s\n", op.text)
 		case opDel:
-			fmt.Fprintln(w, paint(color, cRed, "- "+op.text)) //nolint:errcheck // best-effort write to output
+			fmt.Fprintln(w, paint(color, cRed, "- "+op.text))
 		case opAdd:
-			fmt.Fprintln(w, paint(color, cGreen, "+ "+op.text)) //nolint:errcheck // best-effort write to output
+			fmt.Fprintln(w, paint(color, cGreen, "+ "+op.text))
 		}
 	}
 }
@@ -671,11 +671,11 @@ func renderSideBySide(w io.Writer, a, b string, width int, color bool) {
 	// mirrors sep as "─┼─" so the ┼ lands directly under every │.
 	// Pad the header text manually (not via %-*s) so it stays correct even
 	// when paint() wraps it in ANSI escapes, which %-*s would miscount.
-	fmt.Fprintf(w, "  %s%s%s\n", //nolint:errcheck // best-effort write to output
+	fmt.Fprintf(w, "  %s%s%s\n",
 		paint(color, cDim, truncPad("current", width)),
 		sep,
 		paint(color, cDim, "proposed"))
-	fmt.Fprintf(w, "  %s\n", paint(color, cDim, //nolint:errcheck // best-effort write to output
+	fmt.Fprintf(w, "  %s\n", paint(color, cDim,
 		strings.Repeat("─", width)+"─┼─"+strings.Repeat("─", width)))
 	for _, r := range rows {
 		left := truncPad(r.l, width)
@@ -686,7 +686,7 @@ func renderSideBySide(w io.Writer, a, b string, width int, color bool) {
 		if r.rc != "" {
 			right = paint(color, r.rc, right)
 		}
-		fmt.Fprintf(w, "  %s%s%s\n", left, sep, right) //nolint:errcheck // best-effort write to output
+		fmt.Fprintf(w, "  %s%s%s\n", left, sep, right)
 	}
 }
 
