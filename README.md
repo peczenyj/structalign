@@ -193,11 +193,14 @@ exactly. Only the *presentation* is new.
 
 ## Building from source
 
+Requires **Go 1.25+** (the floor set by `golang.org/x/tools`).
+
 ```sh
 git clone https://github.com/peczenyj/structalign
 cd structalign
-go build -o structalign ./cmd/structalign
-go run ./cmd/structalign ./_example         # quick smoke test against the sample
+make build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
+make check          # gofmt, vet, build, and a smoke test against ./_example
+make help           # list all targets
 ```
 
 The program is a single file at `cmd/structalign/main.go`; `_example/` holds sample
