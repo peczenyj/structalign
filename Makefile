@@ -37,6 +37,19 @@ smoke: ## Exercise both modes against the bundled sample
 .PHONY: check
 check: fmt-check vet build smoke ## Run everything CI runs
 
+.PHONY: changelog
+changelog: ## Regenerate CHANGELOG.md from commit history (needs git-cliff)
+	git-cliff -o CHANGELOG.md
+
+.PHONY: changelog-unreleased
+changelog-unreleased: ## Print the pending (unreleased) changelog entries
+	git-cliff --unreleased
+
+.PHONY: release
+release: ## Write CHANGELOG.md for a release: make release TAG=v0.1.0
+	@test -n "$(TAG)" || { echo "usage: make release TAG=vX.Y.Z"; exit 1; }
+	git-cliff --tag $(TAG) -o CHANGELOG.md
+
 .PHONY: clean
 clean: ## Remove the built binary
 	rm -f $(BINARY)

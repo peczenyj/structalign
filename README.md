@@ -250,6 +250,19 @@ diffing uses `go-udiff` rather than x/tools' own diff package:
   compiler rejects it. `go-udiff` is a public port of the same gopls diff code,
   so the results are equivalent.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Commits follow
+[Conventional Commits](https://www.conventionalcommits.org), and the changelog is
+generated from them with [git-cliff](https://git-cliff.org) in
+[Keep a Changelog](https://keepachangelog.com) format:
+
+```sh
+make changelog                 # regenerate CHANGELOG.md
+make changelog-unreleased      # preview pending entries
+make release TAG=v0.1.0        # stamp the changelog for a release
+```
+
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
