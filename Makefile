@@ -39,7 +39,7 @@ check: fmt-check vet build smoke ## Run everything CI runs
 
 .PHONY: screenshot
 screenshot: build ## Regenerate docs/diff.png from colored output (needs python3 + pillow)
-	./$(BINARY) -color=always $(SAMPLE) > /tmp/structalign-diff.ansi
+	./$(BINARY) -color=always $(SAMPLE) > /tmp/structalign-diff.ansi || true  # diff mode exits 1 on findings
 	python3 docs/ansi2png.py /tmp/structalign-diff.ansi docs/diff.png
 
 .PHONY: changelog
