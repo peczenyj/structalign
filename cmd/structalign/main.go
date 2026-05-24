@@ -387,10 +387,7 @@ type layoutField struct {
 // structs printed.
 func inspectStructs(w io.Writer, pkg *types.Package, sizes types.Sizes, patterns []string, color bool, verbose bool, keepTags bool) int {
 	scope := pkg.Scope()
-	var names []string
-	for _, n := range scope.Names() {
-		names = append(names, n)
-	}
+	names := append([]string{}, scope.Names()...)
 	sort.Strings(names)
 
 	printed := 0

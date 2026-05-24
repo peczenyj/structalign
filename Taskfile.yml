@@ -1,0 +1,133 @@
+version: '3'
+
+vars:
+  # PKG_LIST: all project packages excluding generated mocks.
+  PKG_LIST:
+    sh: go list ./... | grep -v /mocks | tr '\n' ' '
+  PKG_PATH_LIST:
+    sh: go list -f '{{"{{.Dir}}"}}' {{.PKG_LIST}} | tr '\n' ' '
+
+tasks:
+  default:
+    desc: "List available tasks"
+    cmds:
+      - task --list
+
+  build:
+    desc: "Build the binary into ./structalign"
+    cmds:
+      - go build -o structalign ./cmd/structalign
+
+  install:
+    desc: "Install the binary into $GOBIN / $GOPATH/bin"
+    cmds:
+      - go install ./cmd/structalign
+
+  test:
+    desc: "Run tests via gotestsum (pass flags after --, e.g. -- -update)"
+    cmds:
+      - gotestsum -f standard-verbose -- {{.PKG_PATH_LIST}} {{.CLI_ARGS}}
+
+  test:race:
+    desc: "Run tests with the race detector"
+    cmds:
+      - gotestsum -f standard-verbose -- -race {{.PKG_PATH_LIST}} {{.CLI_ARGS}}
+
+  test:coverage:
+    desc: "Run tests with coverage report"
+    cmds:
+      - gotestsum -f standard-verbose -- -covermode=atomic -count=1 -coverprofile=coverage.txt {{.PKG_PATH_LIST}} {{.CLI_ARGS}}
+
+  test:update:
+    desc: "Regenerate the .golden fixtures"
+    cmds:
+      - go test ./... -update
+
+  lint:
+    desc: "Run golangci-lint"
+    cmds:
+      - golangci-lint run {{.PKG_PATH_LIST}}
+
+  lint:fix:
+    desc: "Run golangci-lint with --fix"
+    cmds:
+      - golangci-lint run --fix {{.PKG_PATH_LIST}}
+
+  format:
+    desc: "Format with golangci-lint's formatters"
+    cmds:
+      - golangci-lint fmt {{.PKG_PATH_LIST}}
+
+  generate:
+    desc: "Regenerate mocks with mockery (skipped when .mockery.yaml is absent)"
+    cmds:
+      - mockery
+    status:
+      - test ! -f .mockery.yaml
+
+  smoke:
+    desc: "Exercise both modes against the bundled sample"
+    cmds:
+      - go run ./cmd/structalign -inspect ./_example
+      - |
+        if go run ./cmd/structalign ./_example; then
+          echo "expected non-zero exit when reorderings are found"; exit 1
+        fi
+
+  tidy:
+    desc: "Run go mod tidy"
+    cmds:
+      - go mod tidy
+
+  tidy:check:
+    desc: "Fail if go.mod/go.sum are not tidy"
+    cmds:
+      - go mod tidy
+      - git diff --exit-code go.mod go.sum
+
+  ci:
+    desc: "Full pre-push gate: mirrors the GitHub Actions checks"
+    cmds:
+      - task: tidy:check
+      - task: lint
+      - go build {{.PKG_PATH_LIST}}
+      - task: test
+      - task: smoke
+
+  changelog:
+    desc: "Regenerate CHANGELOG.md from git history"
+    cmds:
+      - git cliff -o CHANGELOG.md
+
+  changelog:unreleased:
+    desc: "Preview the next release's changelog section"
+    cmds:
+      - git cliff --unreleased
+
+  release:
+    desc: "Write CHANGELOG.md for a release: task release TAG=v0.3.0"
+    cmds:
+      - "test -n '{{.TAG}}' || (echo 'usage: task release TAG=vX.Y.Z'; exit 1)"
+      - git cliff --tag {{.TAG}} -o CHANGELOG.md
+
+  snapshot:
+    desc: "Build a local snapshot release with GoReleaser (no publish)"
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  release-check:
+    desc: "Validate .goreleaser.yaml"
+    cmds:
+      - goreleaser check
+
+  screenshot:
+    desc: "Regenerate docs/diff.png (needs python3 + pillow)"
+    cmds:
+      - ./structalign -color=always -type=Record ./_example > /tmp/structalign-diff.ansi || true
+      - python3 docs/ansi2png.py /tmp/structalign-diff.ansi docs/diff.png "$ structalign -type=Record ./_example"
+    deps: [build]
+
+  clean:
+    desc: "Remove build and coverage artifacts"
+    cmds:
+      - rm -rf structalign dist/ coverage.* *.out
