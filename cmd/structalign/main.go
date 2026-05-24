@@ -177,7 +177,7 @@ func process(path, diffStyle string, width int, color bool, patterns []string, i
 		Pkg:        pkg,
 		TypesInfo:  info,
 		TypesSizes: sizes,
-		ResultOf: map[*analysis.Analyzer]interface{}{
+		ResultOf: map[*analysis.Analyzer]any{
 			inspect.Analyzer: insp,
 		},
 		Report: func(d analysis.Diagnostic) {
@@ -231,7 +231,7 @@ func process(path, diffStyle string, width int, color bool, patterns []string, i
 // glob patterns. An empty input yields nil (meaning "match everything").
 func parsePatterns(s string) []string {
 	var out []string
-	for _, p := range strings.Split(s, ",") {
+	for p := range strings.SplitSeq(s, ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}
@@ -421,7 +421,7 @@ func inspectStructs(pkg *types.Package, sizes types.Sizes, patterns []string, co
 func computeLayout(st *types.Struct, sizes types.Sizes) (fields []layoutField, total, align int64) {
 	nf := st.NumFields()
 	vars := make([]*types.Var, nf)
-	for i := 0; i < nf; i++ {
+	for i := range nf {
 		vars[i] = st.Field(i)
 	}
 	offsets := sizes.Offsetsof(vars)
@@ -429,7 +429,7 @@ func computeLayout(st *types.Struct, sizes types.Sizes) (fields []layoutField, t
 	align = sizes.Alignof(st)
 
 	fields = make([]layoutField, nf)
-	for i := 0; i < nf; i++ {
+	for i := range nf {
 		fsize := sizes.Sizeof(vars[i].Type())
 		lf := layoutField{
 			name:   vars[i].Name(),
@@ -627,11 +627,8 @@ func renderSideBySide(a, b string, width int, color bool) {
 				adds = append(adds, ops[i].text)
 				i++
 			}
-			n := len(dels)
-			if len(adds) > n {
-				n = len(adds)
-			}
-			for k := 0; k < n; k++ {
+			n := max(len(dels), len(adds))
+			for k := range n {
 				var l, r string
 				var lc, rc string
 				if k < len(dels) {
@@ -734,7 +731,7 @@ func lcsDiff(a, b []string) []diffOp {
 	// coincide with entries in lineStart.
 	offsetToLine := func(o int) int {
 		// linear scan is fine: structs are tiny.
-		for i := 0; i < len(a); i++ {
+		for i := range a {
 			if lineStart[i] == o {
 				return i
 			}
