@@ -272,6 +272,11 @@ make changelog-unreleased      # preview pending entries
 make release TAG=v0.1.0        # stamp the changelog for a release
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, commit
+conventions, and the release process.
+
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
