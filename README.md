@@ -21,22 +21,29 @@ layout. The analysis comes straight from the upstream analyzer, so results match
 
 ## Quick start
 
+Install:
+
 ```sh
 go install github.com/peczenyj/structalign/cmd/structalign@latest
-
-structalign ./...            # scan a tree, print a diff per shrinkable struct
 ```
 
 Or grab a prebuilt binary for your OS/arch from the
 [Releases](https://github.com/peczenyj/structalign/releases) page. Check the
 installed version with `structalign -version`.
 
+Then point it at a Go file or package directory (pass several to scan more than
+one at once):
+
+```sh
+structalign ./path/to/pkg
+```
+
 Pointed at the bundled sample (`./_example`), it reports the reordering and exits
 non-zero so it can gate CI:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:4:12: Mixed: struct of size 24 could be 16
+_example/types.go:6:12: Mixed: struct of size 24 could be 16
   struct {
 + 	B int64
   	A bool
@@ -91,7 +98,7 @@ Unified diff:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:4:12: Mixed: struct of size 24 could be 16
+_example/types.go:6:12: Mixed: struct of size 24 could be 16
   struct {
 + 	B int64
   	A bool
@@ -104,7 +111,7 @@ Side-by-side:
 
 ```
 $ structalign -diff=side -width=28 -type=Mixed ./_example
-_example/types.go:4:12: Mixed: struct of size 24 could be 16
+_example/types.go:6:12: Mixed: struct of size 24 could be 16
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
   struct {                     │ struct {
@@ -159,7 +166,7 @@ structs and struct literals are never matched by a non-empty filter. It applies 
 every mode:
 
 ```sh
-structalign -type='*Request' ./...          # only structs ending in Request
+structalign -type='*Request' ./pkg          # only structs ending in Request
 structalign -type='Record,Config' ./pkg     # exact names
 structalign -inspect -type='*ID*' ./pkg     # inspect just ID-related structs
 ```
