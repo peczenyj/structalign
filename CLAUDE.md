@@ -20,34 +20,52 @@ The module path is `github.com/peczenyj/structalign`, so the install target is
 ```
 go build -o structalign ./cmd/structalign     # produces ./structalign
 go vet ./...
-go run ./cmd/structalign [flags] <file.go | dir> [...]
+go test ./...                                  # unit + golden tests
+go test ./... -update                          # regenerate testdata/*.golden
+go run ./cmd/structalign [flags] [packages]   # packages: ./..., import paths, dirs, files
 go run ./cmd/structalign ./_example            # exercise diff mode
 go run ./cmd/structalign -inspect ./_example   # exercise inspect mode
 ```
 
-There are **no tests** in this repo. Verify changes by running the binary against
-`./_example` and eyeballing output. Exit code is meaningful: diff modes exit **1**
-when any reordering is found (CI-friendly), **0** when none; `-inspect` always
-exits 0.
+Tests live in `cmd/structalign/main_test.go` (same `package main`, so they reach
+unexported funcs). Two layers: table-driven unit tests for the pure helpers
+(`parsePatterns`, `matchAny`, `normalizeArgs`, `stripStructTags`, `relPath`,
+`lcsDiff`, `renderUnified`), and golden-file integration tests that run the real
+`loadPackages` → `diffPackage`/`inspectStructs` pipeline against `./_example` and
+compare to `testdata/*.golden`. The golden test `t.Chdir`s to the repo root so
+`./_example` resolves and paths render relative; regenerate fixtures with
+`-update`. Golden cases assume a **64-bit target** (`unsafe.Sizeof(uintptr) == 8`)
+and `t.Skip` otherwise, since `types.Sizes` depends on pointer width. Rendering is
+testable because `diffPackage`/`inspectStructs`/`render*` take an `io.Writer`
+(`main` passes `os.Stdout`).
+
+Exit code is meaningful: diff modes exit **1** when any reordering is found
+(CI-friendly), **0** when none; `-inspect` always exits 0.
 
 ## Core architecture
 
 The key design decision (see the package doc and README "How it works"): this tool
 **does not reimplement** the field-alignment algorithm. It runs the unmodified
 upstream `golang.org/x/tools/go/analysis/passes/fieldalignment.Analyzer` and
-intercepts the `SuggestedFix` it already produces. The pipeline in `process()`:
+intercepts the `SuggestedFix` it already produces. The pipeline:
 
-1. `loadFiles` parses a `.go` file or every non-test `.go` in a directory as one package.
-2. Type-check with `go/types`, supplying `types.SizesFor("gc", "amd64")` so the
-   analyzer's size math is correct. The `types.Config.Error` callback swallows
-   errors so partially-resolving packages (missing deps) are still analyzed.
-3. Run the analyzer manually via an `analysis.Pass`, satisfying its only
-   dependency (the `inspect` pass) with `inspector.New(files)` in `Pass.ResultOf`.
-4. A custom `Pass.Report` captures each diagnostic's single `TextEdit`: `NewText`
+1. `main` resolves the CLI args (`normalizeArgs` rewrites bare `.go` files to
+   `file=` queries) and `loadPackages` loads them via
+   `golang.org/x/tools/go/packages` (`./...`, import paths, dirs, files). This
+   gives syntax, types, type info, and `TypesSizes` for the real build target.
+2. Per package, `diffPackage` runs the analyzer via an `analysis.Pass`, wiring
+   `pkg.Syntax`/`pkg.Types`/`pkg.TypesInfo`/`pkg.TypesSizes` and satisfying its
+   only dependency (the `inspect` pass) with `inspector.New(pkg.Syntax)`.
+3. A custom `Pass.Report` captures each diagnostic's single `TextEdit`: `NewText`
    is the proposed reordered struct, and `readSource` reads the original source
    slice between the edit's `Pos`/`End`.
-5. `lcsDiff` diffs the two via `github.com/aymanbagabas/go-udiff` (`udiff.Lines`),
-   and `render` emits unified / side-by-side / proposed-only output.
+4. `lcsDiff` diffs the two via `github.com/aymanbagabas/go-udiff` (`udiff.Lines`),
+   and `render` emits unified / side-by-side / proposed-only output. Filenames
+   are shown relative to the working dir (`relPath`), since go/packages reports
+   absolute paths.
+
+Package load/type errors are reported to stderr but non-fatal — a
+partially-resolved package can still produce findings.
 
 **Why go-udiff and not x/tools' own diff:** Go's internal-package rule forbids
 importing `golang.org/x/tools/internal/diff` from a module not rooted under
@@ -62,9 +80,9 @@ to swap it back for the internal package — it won't compile from this module.
 
 ## Things to keep consistent when editing
 
-- **Architecture target is hardcoded** to `("gc", "amd64")` in `cmd/structalign/main.go`'s `process` and
-  reused for inspect. The README documents changing it for 32-bit targets — keep
-  both call sites in sync if you parameterize it.
+- **Type sizes come from `go/packages`** (`pkg.TypesSizes`), i.e. the toolchain's
+  real target (host `GOOS`/`GOARCH` by default; override via env). It is no longer
+  hardcoded to amd64.
 - **Struct name labeling** depends on `structNameIndex` mapping `StructType.Pos()`
   to the declared type name, because the analyzer reports diagnostics at exactly
   that position. Anonymous structs have no name and are filtered out by any
