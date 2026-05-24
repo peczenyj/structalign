@@ -9,6 +9,8 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 
 SRC, OUT = sys.argv[1], sys.argv[2]
+# Optional 3rd arg: the prompt line shown at the top (defaults to a plain run).
+PROMPT_ARG = sys.argv[3] if len(sys.argv) > 3 else "$ structalign ./_example"
 
 # --- theme (Tomorrow-Night-ish on a dark background) ---
 BG       = (29, 31, 33)       # #1d1f21
@@ -18,7 +20,7 @@ RED      = (224, 108, 117)    # deletions
 GREEN    = (152, 195, 121)    # additions
 CYAN     = (86, 182, 194)     # header
 DOTS     = [(255, 95, 86), (255, 189, 46), (39, 201, 63)]
-PROMPT   = "$ structalign ./_example"
+PROMPT   = PROMPT_ARG
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 SIZE     = 30
