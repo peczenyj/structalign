@@ -55,9 +55,17 @@ release: ## Write CHANGELOG.md for a release: make release TAG=v0.1.0
 	@test -n "$(TAG)" || { echo "usage: make release TAG=vX.Y.Z"; exit 1; }
 	git-cliff --tag $(TAG) -o CHANGELOG.md
 
+.PHONY: snapshot
+snapshot: ## Build a local snapshot release with GoReleaser (no publish; needs goreleaser)
+	goreleaser release --snapshot --clean
+
+.PHONY: release-check
+release-check: ## Validate .goreleaser.yaml (needs goreleaser)
+	goreleaser check
+
 .PHONY: clean
-clean: ## Remove the built binary
-	rm -f $(BINARY)
+clean: ## Remove the built binary and release artifacts
+	rm -rf $(BINARY) dist/
 
 .PHONY: help
 help: ## List targets

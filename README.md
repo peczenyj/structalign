@@ -26,6 +26,10 @@ go install github.com/peczenyj/structalign/cmd/structalign@latest
 structalign ./...            # scan a tree, print a diff per shrinkable struct
 ```
 
+Or grab a prebuilt binary for your OS/arch from the
+[Releases](https://github.com/peczenyj/structalign/releases) page. Check the
+installed version with `structalign -version`.
+
 Pointed at the bundled sample (`./_example`), it reports the reordering and exits
 non-zero so it can gate CI:
 

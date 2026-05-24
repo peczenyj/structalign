@@ -1,5 +1,9 @@
 name: Release
 
+# git-flow finishes a release by creating a vX.Y.Z tag on main; pushing that
+# tag triggers GoReleaser, which builds the cross-platform binaries, uploads
+# them with checksums, and publishes the GitHub Release (notes are GitHub's
+# native generated notes, per .goreleaser.yaml's changelog.use: github-native).
 on:
   push:
     tags:
@@ -9,20 +13,21 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Publish GitHub Release
+  goreleaser:
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/setup-go@v6
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+          go-version: stable
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -45,16 +45,21 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 )
 
+// version is the tool's version. It is overridden at release time via
+// -ldflags "-X main.version=...", and defaults to "dev" for source builds.
+var version = "dev"
+
 // config holds all command-line options. Flags bind directly to these fields
 // via flag.<Type>Var, so the rest of main works with values, not pointers.
 type config struct {
-	diff       string // -diff:    unified | side | none
-	width      int    // -width:   per-side column width for side mode (0 = auto)
-	color      string // -color:   auto | always | never
-	typeFilter string // -type:    comma-separated glob patterns, empty = all
-	inspect    bool   // -inspect: print layout instead of diffing
-	verbose    bool   // -verbose: in inspect mode, padding on its own `_` line
-	tags       bool   // -tags:    preserve struct field tags in output
+	diff        string // -diff:    unified | side | none
+	width       int    // -width:   per-side column width for side mode (0 = auto)
+	color       string // -color:   auto | always | never
+	typeFilter  string // -type:    comma-separated glob patterns, empty = all
+	inspect     bool   // -inspect: print layout instead of diffing
+	verbose     bool   // -verbose: in inspect mode, padding on its own `_` line
+	tags        bool   // -tags:    preserve struct field tags in output
+	showVersion bool   // -version: print version and exit
 }
 
 func main() {
@@ -66,12 +71,17 @@ func main() {
 	flag.BoolVar(&cfg.inspect, "inspect", false, "inspect layout: print each field's offset, size, alignment, and padding (no reordering)")
 	flag.BoolVar(&cfg.verbose, "verbose", false, "in -inspect mode, show padding on its own _ line instead of folded into the field comment")
 	flag.BoolVar(&cfg.tags, "tags", false, "preserve struct field tags in output (default: strip them)")
+	flag.BoolVar(&cfg.showVersion, "version", false, "print version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(os.Stderr, "usage: structalign [flags] <file.go | dir> [...]\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if cfg.showVersion {
+		fmt.Println(version)
+		return
+	}
 	if flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(2)
