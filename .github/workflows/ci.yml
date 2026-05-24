@@ -38,6 +38,9 @@ jobs:
       - name: Build
         run: go build ./cmd/structalign
 
+      - name: Test
+        run: go test ./...
+
       - name: Smoke test
         run: |
           go run ./cmd/structalign -inspect ./_example

@@ -1,0 +1,6 @@
+type Mixed struct { // size: 24, align: 8, padding: 14
+	A bool  // size:  1, align: 1, padding: 7
+	B int64 // size:  8, align: 8
+	C bool  // size:  1, align: 1, padding: 7
+}
+

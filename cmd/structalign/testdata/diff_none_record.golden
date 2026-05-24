@@ -1,0 +1,9 @@
+_example/types.go:13:13: Record: struct of size 48 could be 32
+  struct {
+  	Ptr     *uint64
+  	ID      string
+  	Count   uint32
+  	Flag    bool
+  	Enabled bool
+  }
+

@@ -31,12 +31,14 @@ Or grab a prebuilt binary for your OS/arch from the
 [Releases](https://github.com/peczenyj/structalign/releases) page. Check the
 installed version with `structalign -version`.
 
-Then point it at a Go file or package directory (pass several to scan more than
-one at once):
+Then point it at a file, a package, or any Go package pattern:
 
 ```sh
-structalign ./path/to/pkg
+structalign ./...            # every package in the module (skips _* and testdata dirs)
 ```
+
+It accepts whatever the `go` tool does — `./...`, import paths, directories, and
+single `.go` files — and you can pass several at once.
 
 Pointed at the bundled sample (`./_example`), it reports the reordering and exits
 non-zero so it can gate CI:
@@ -74,7 +76,10 @@ inspect a struct's layout. `structalign` fills both gaps.
 ## Usage
 
 ```
-structalign [flags] <file.go | package-dir> [...]
+structalign [flags] [packages]
+
+  packages        Go package patterns: ./..., import paths, directories, or
+                  single .go files (defaults the go tool understands)
 
   -diff string    diff style: unified | side | none   (default "unified")
   -width int      column width per side for -diff=side (default: auto from terminal)
@@ -154,8 +159,9 @@ type Mixed struct { // size: 24, align: 8, padding: 14
 ```
 
 The layout comes from the same `go/types` sizing the diff modes use
-(`types.Sizes.Offsetsof` / `Sizeof` / `Alignof`), so it respects the `gc`/`amd64`
-target. This is similar to `honnef.co/go/tools/cmd/structlayout`, but stays inside
+(`types.Sizes.Offsetsof` / `Sizeof` / `Alignof`), driven by the toolchain's
+target sizes (your host `GOOS`/`GOARCH` by default). This is similar to
+`honnef.co/go/tools/cmd/structlayout`, but stays inside
 this one tool and honors the same `-type` filter.
 
 ### Filtering by type name
@@ -166,7 +172,7 @@ structs and struct literals are never matched by a non-empty filter. It applies 
 every mode:
 
 ```sh
-structalign -type='*Request' ./pkg          # only structs ending in Request
+structalign -type='*Request' ./...          # only structs ending in Request
 structalign -type='Record,Config' ./pkg     # exact names
 structalign -inspect -type='*ID*' ./pkg     # inspect just ID-related structs
 ```
@@ -229,17 +235,20 @@ it as a package, so it stays out of `go build ./...` and friends.
   can occasionally induce false sharing between goroutines.
 - Reordering can hurt logical grouping/readability; treat the output as advice,
   most valuable for hot, frequently-allocated structs.
-- Sizes are computed for a target architecture (`amd64` here). 32-bit targets can
-  differ; change `types.SizesFor("gc", "...")` in `cmd/structalign/main.go` if needed.
+- Sizes are computed for the toolchain's target (your host `GOOS`/`GOARCH` by
+  default). To analyze another target, set them in the environment, e.g.
+  `GOARCH=386 structalign ./...`.
 
 ## Design notes
 
 ### Pipeline
 
-1. Type-check the target package with the stdlib (`go/types`), supplying
-   `types.SizesFor("gc", "amd64")` so the analyzer's size math is correct.
+1. Load the target packages with `golang.org/x/tools/go/packages` (mode
+   including syntax, types, type info, and `TypesSizes`). This resolves `./...`,
+   import paths, directories, and single files the way the `go` tool does, and
+   supplies the analyzer's size math from the real build target.
 2. Satisfy the analyzer's only dependency — the `inspect` pass — by building an
-   `inspector.New(files)` and placing it in `Pass.ResultOf`.
+   `inspector.New(pkg.Syntax)` and placing it in `Pass.ResultOf`.
 3. Provide a custom `Pass.Report` that captures each diagnostic's `NewText` (the
    proposed struct) and reads the original source slice between `Pos` and `End`.
 4. Diff the two with `github.com/aymanbagabas/go-udiff` (a maintained standalone
