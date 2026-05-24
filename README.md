@@ -5,6 +5,7 @@
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/peczenyj/structalign?sort=semver)](https://github.com/peczenyj/structalign/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
 > rewrite — plus a per-field **layout inspector**.
