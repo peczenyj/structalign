@@ -11,13 +11,16 @@
 //
 // Usage:
 //
-//	structalign [flags] <file.go | package-dir> [...]
+//	structalign [flags] [packages]
+//
+// packages are Go package patterns (./..., import paths, directories, or single
+// .go files) -- whatever the go tool accepts -- resolved via go/packages.
 //
 // Flags:
 //
 //	-diff=unified     diff style: unified | side | none  (default unified)
 //	-color            colorize output (default: auto = on if stdout is a TTY)
-//	-width=N          column width per side for -diff=side (default 80)
+//	-width=N          column width per side for -diff=side (default: auto)
 package main
 
 import (
@@ -26,7 +29,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
-	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -43,6 +45,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/fieldalignment"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
+	"golang.org/x/tools/go/packages"
 )
 
 // version is the tool's version. It is overridden at release time via
@@ -74,7 +77,7 @@ func main() {
 	flag.BoolVar(&cfg.showVersion, "version", false, "print version and exit")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
-		fmt.Fprintf(os.Stderr, "usage: structalign [flags] <file.go | dir> [...]\n\n")
+		fmt.Fprintf(os.Stderr, "usage: structalign [flags] [packages]\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -92,17 +95,36 @@ func main() {
 	if cfg.width <= 0 {
 		cfg.width = resolveWidth()
 	}
-	patterns := parsePatterns(cfg.typeFilter)
+	typeGlobs := parsePatterns(cfg.typeFilter)
 	color := wantColor(cfg.color)
 
+	// go/packages resolves every argument the go tool accepts: ./..., import
+	// paths, directories, and (via normalizeArgs) single .go files.
+	pkgs, err := loadPackages(normalizeArgs(flag.Args()))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "structalign: %v\n", err)
+		os.Exit(2)
+	}
+	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].PkgPath < pkgs[j].PkgPath })
+
+	// Load/type errors are reported but not fatal: a partially-resolved package
+	// can still yield useful findings.
+	for _, pkg := range pkgs {
+		for _, e := range pkg.Errors {
+			fmt.Fprintf(os.Stderr, "structalign: %s: %v\n", pkg.PkgPath, e)
+		}
+	}
+
 	var totalFindings int
-	for _, arg := range flag.Args() {
-		findings, err := process(arg, cfg.diff, cfg.width, color, patterns, cfg.inspect, cfg.verbose, cfg.tags)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "structalign: %s: %v\n", arg, err)
+	for _, pkg := range pkgs {
+		if pkg.Types == nil || pkg.TypesSizes == nil {
 			continue
 		}
-		totalFindings += findings
+		if cfg.inspect {
+			totalFindings += inspectStructs(pkg.Types, pkg.TypesSizes, typeGlobs, color, cfg.verbose, cfg.tags)
+		} else {
+			totalFindings += diffPackage(pkg, cfg.diff, cfg.width, color, typeGlobs, cfg.tags)
+		}
 	}
 
 	if totalFindings == 0 {
@@ -130,75 +152,74 @@ type finding struct {
 	message  string // analyzer diagnostic message (carries size info)
 }
 
-// process loads the given path (a .go file or a directory of a package) and
-// either inspects struct layouts (inspectMode) or runs the fieldalignment
-// analyzer and renders each suggested reordering. If patterns is non-empty,
-// only structs whose enclosing named type matches one of the glob patterns are
-// considered. It returns the number of items printed.
-func process(path, diffStyle string, width int, color bool, patterns []string, inspectMode bool, verbose bool, keepTags bool) (int, error) {
-	fset := token.NewFileSet()
-
-	files, pkgName, err := loadFiles(fset, path)
-	if err != nil {
-		return 0, err
+// loadPackages resolves the given patterns (./..., import paths, directories,
+// or "file=" queries) into typed packages, with enough information for the
+// fieldalignment analyzer and the layout inspector: syntax, types, type info,
+// and the target's type sizes.
+func loadPackages(patterns []string) ([]*packages.Package, error) {
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
+			packages.NeedImports | packages.NeedDeps | packages.NeedTypes |
+			packages.NeedTypesSizes | packages.NeedSyntax | packages.NeedTypesInfo,
+		Fset:  token.NewFileSet(),
+		Tests: false,
 	}
-	if len(files) == 0 {
-		return 0, fmt.Errorf("no Go files found")
+	return packages.Load(cfg, patterns...)
+}
+
+// normalizeArgs lets a bare path to a .go file be used as an argument by
+// rewriting it to the "file=" query go/packages understands. Everything else
+// (./..., import paths, directories) is passed through unchanged.
+func normalizeArgs(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if strings.HasSuffix(a, ".go") {
+			if fi, err := os.Stat(a); err == nil && !fi.IsDir() {
+				a = "file=" + a
+			}
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// diffPackage runs the fieldalignment analyzer over one loaded package and
+// renders each suggested reordering. If patterns is non-empty, only structs
+// whose enclosing named type matches one of the glob patterns are considered.
+// It returns the number of findings rendered.
+func diffPackage(pkg *packages.Package, diffStyle string, width int, color bool, patterns []string, keepTags bool) int {
+	if len(pkg.Syntax) == 0 {
+		return 0
 	}
 
 	// Map the position of each `type Name struct {...}` body to its name, so
 	// we can label and filter findings. The analyzer reports at the struct-type
 	// node's position, which is exactly the StructType.Pos() we record here.
-	names := structNameIndex(files)
-
-	// Type-check. fieldalignment needs TypesInfo + TypesSizes; inspect mode
-	// needs the resolved struct types and the same Sizes.
-	info := &types.Info{
-		Types: make(map[ast.Expr]types.TypeAndValue),
-		Defs:  make(map[*ast.Ident]types.Object),
-		Uses:  make(map[*ast.Ident]types.Object),
-	}
-	conf := types.Config{
-		Importer: importer.Default(),
-		// Be permissive: we want to analyze even packages that don't
-		// fully type-check (e.g. missing deps). Errors are collected,
-		// not fatal, so partially-resolved structs still get checked.
-		Error: func(error) {},
-	}
-	sizes := types.SizesFor("gc", "amd64")
-	conf.Sizes = sizes
-	pkg, _ := conf.Check(pkgName, fset, files, info)
-	if pkg == nil {
-		pkg = types.NewPackage(pkgName, pkgName)
-	}
-
-	if inspectMode {
-		return inspectStructs(pkg, sizes, patterns, color, verbose, keepTags), nil
-	}
+	names := structNameIndex(pkg.Syntax)
 
 	// Satisfy the analyzer's dependency on the inspect pass.
-	insp := inspector.New(files)
+	insp := inspector.New(pkg.Syntax)
 
 	var findings []finding
 	pass := &analysis.Pass{
 		Analyzer:   fieldalignment.Analyzer,
-		Fset:       fset,
-		Files:      files,
-		Pkg:        pkg,
-		TypesInfo:  info,
-		TypesSizes: sizes,
+		Fset:       pkg.Fset,
+		Files:      pkg.Syntax,
+		Pkg:        pkg.Types,
+		TypesInfo:  pkg.TypesInfo,
+		TypesSizes: pkg.TypesSizes,
 		ResultOf: map[*analysis.Analyzer]any{
 			inspect.Analyzer: insp,
 		},
 		Report: func(d analysis.Diagnostic) {
-			f := finding{fset: fset, pos: d.Pos, message: d.Message}
+			f := finding{fset: pkg.Fset, pos: d.Pos, message: d.Message}
 			// The analyzer attaches exactly one SuggestedFix with one
 			// TextEdit spanning the struct node. Capture it.
 			if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
 				e := d.SuggestedFixes[0].TextEdits[0]
 				f.pos, f.end = e.Pos, e.End
 				f.proposed = string(e.NewText)
-				f.original = readSource(fset, e.Pos, e.End)
+				f.original = readSource(pkg.Fset, e.Pos, e.End)
 				if !keepTags {
 					// Strip tags from both sides so the diff focuses on field
 					// order, not tag re-spacing. Best-effort: on a parse error
@@ -223,18 +244,23 @@ func process(path, diffStyle string, width int, color bool, patterns []string, i
 	}
 
 	if _, err := fieldalignment.Analyzer.Run(pass); err != nil {
-		return 0, fmt.Errorf("analyzer: %w", err)
+		fmt.Fprintf(os.Stderr, "structalign: %s: analyzer: %v\n", pkg.PkgPath, err)
+		return 0
 	}
 
-	// Stable order: by file then position.
+	// Stable order: by file, then position within the file.
 	sort.Slice(findings, func(i, j int) bool {
-		return findings[i].pos < findings[j].pos
+		pi, pj := pkg.Fset.Position(findings[i].pos), pkg.Fset.Position(findings[j].pos)
+		if pi.Filename != pj.Filename {
+			return pi.Filename < pj.Filename
+		}
+		return pi.Offset < pj.Offset
 	})
 
 	for _, f := range findings {
 		render(f, diffStyle, width, color)
 	}
-	return len(findings), nil
+	return len(findings)
 }
 
 // parsePatterns splits a comma-separated -type value into trimmed, non-empty
@@ -286,44 +312,6 @@ func structNameIndex(files []*ast.File) map[token.Pos]string {
 		})
 	}
 	return index
-}
-
-// loadFiles parses either a single .go file or all non-test .go files in a
-// directory (treated as one package).
-func loadFiles(fset *token.FileSet, path string) ([]*ast.File, string, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return nil, "", err
-	}
-
-	var paths []string
-	if fi.IsDir() {
-		entries, err := os.ReadDir(path)
-		if err != nil {
-			return nil, "", err
-		}
-		for _, e := range entries {
-			name := e.Name()
-			if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-				continue
-			}
-			paths = append(paths, filepath.Join(path, name))
-		}
-	} else {
-		paths = []string{path}
-	}
-
-	var files []*ast.File
-	pkgName := "main"
-	for _, p := range paths {
-		f, err := parser.ParseFile(fset, p, nil, parser.ParseComments)
-		if err != nil {
-			return nil, "", fmt.Errorf("parse %s: %w", p, err)
-		}
-		files = append(files, f)
-		pkgName = f.Name.Name
-	}
-	return files, pkgName, nil
 }
 
 // readSource returns the raw source text between two positions.
@@ -555,13 +543,29 @@ func paint(on bool, code, s string) string {
 	return code + s + cReset
 }
 
+// relPath shortens an absolute filename (go/packages reports absolute paths) to
+// one relative to the current directory, when that doesn't escape upward.
+// Otherwise it returns the name unchanged.
+func relPath(name string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return name
+	}
+	rel, err := filepath.Rel(wd, name)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return name
+	}
+	return rel
+}
+
 func render(f finding, style string, width int, color bool) {
 	loc := f.fset.Position(f.pos)
+	file := relPath(loc.Filename)
 	var header string
 	if f.name != "" {
-		header = fmt.Sprintf("%s:%d:%d: %s: %s", loc.Filename, loc.Line, loc.Column, f.name, f.message)
+		header = fmt.Sprintf("%s:%d:%d: %s: %s", file, loc.Line, loc.Column, f.name, f.message)
 	} else {
-		header = fmt.Sprintf("%s:%d:%d: %s", loc.Filename, loc.Line, loc.Column, f.message)
+		header = fmt.Sprintf("%s:%d:%d: %s", file, loc.Line, loc.Column, f.message)
 	}
 	fmt.Println(paint(color, cBold+cCyan, header))
 
