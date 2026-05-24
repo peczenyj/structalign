@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, devel]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Verify formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./cmd/structalign
+
+      - name: Smoke test
+        run: |
+          go run ./cmd/structalign -inspect ./_example
+          # diff mode exits 1 when reorderings exist; assert that contract holds
+          if go run ./cmd/structalign ./_example; then
+            echo "expected non-zero exit when reorderings are found"; exit 1
+          fi
