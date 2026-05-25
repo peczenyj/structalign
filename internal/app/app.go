@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 
 	"github.com/peczenyj/structalign/internal/align"
@@ -20,6 +21,22 @@ import (
 
 // version is stamped at release time via -ldflags "-X ...app.version=...".
 var version = "dev"
+
+// resolveVersion returns the version to print for -version. A GoReleaser build
+// stamps `version` via -ldflags; for a `go install <module>@vX.Y.Z` build that
+// stamp is absent (still "dev"), so fall back to the module version embedded in
+// the build info.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return version
+}
 
 // App holds the injectable dependencies and output streams.
 type App struct {
@@ -85,7 +102,7 @@ func (a *App) Run(args []string) int {
 		return 2
 	}
 	if opt.showVersion {
-		fmt.Fprintln(a.Stdout, version)
+		fmt.Fprintln(a.Stdout, resolveVersion())
 		return 0
 	}
 	if fs.NArg() == 0 {
