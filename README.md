@@ -360,9 +360,9 @@ generated from them with [git-cliff](https://git-cliff.org) in
 [Keep a Changelog](https://keepachangelog.com) format:
 
 ```sh
-make changelog                 # regenerate CHANGELOG.md
-make changelog-unreleased      # preview pending entries
-make release TAG=v0.1.0        # stamp the changelog for a release
+task changelog                 # regenerate CHANGELOG.md
+task changelog:unreleased      # preview pending entries
+task release TAG=v0.1.0        # stamp the changelog for a release
 ```
 
 ## Contributing

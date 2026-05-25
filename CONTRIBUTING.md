@@ -29,7 +29,7 @@ across Go 1.25.0 and stable.
 When you change diff or inspect output, refresh the README screenshot:
 
 ```sh
-make screenshot     # regenerates docs/diff.png (needs python3 + pillow)
+task screenshot     # regenerates docs/diff.png (needs python3 + pillow)
 ```
 
 ## Commit messages
@@ -80,13 +80,13 @@ cross-platform binaries and publish the GitHub Release. Example for `v0.1.0`:
 git flow release start v0.1.0
 
 # 2. Stamp the changelog for this version and commit it.
-make release TAG=v0.1.0
+task release TAG=v0.1.0
 git add CHANGELOG.md
 git commit -m "chore(release): v0.1.0"
 
 # 3. (Recommended) dry-run the release build locally — no publish.
-make release-check          # validate .goreleaser.yaml
-make snapshot               # build all artifacts into dist/
+task release-check          # validate .goreleaser.yaml
+task snapshot               # build all artifacts into dist/
 
 # 4. Finish: merges release -> main, tags v0.1.0, back-merges into devel.
 git flow release finish v0.1.0
