@@ -21,6 +21,15 @@ func TestWantColor(t *testing.T) {
 	assert.False(t, ui.WantColor("auto", w))
 }
 
+func TestWantColorStatErrorIsNotATerminal(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	r.Close()
+	w.Close()
+	// Stat on a closed file errors; auto treats that as "not a terminal".
+	assert.False(t, ui.WantColor("auto", w))
+}
+
 func TestWantColorHonorsNoColorEnv(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	// -color=always still wins over NO_COLOR (the convention defers to an
