@@ -219,19 +219,23 @@ exactly. Only the *presentation* is new.
 
 ## Building from source
 
-Requires **Go 1.25+** (the floor set by `golang.org/x/tools`).
+Requires **Go 1.25+** (the floor set by `golang.org/x/tools`). The repo uses
+[Task](https://taskfile.dev) ([`golangci-lint`](https://golangci-lint.run) handles
+both linting and formatting); the `Makefile` just delegates to `task`.
 
 ```sh
 git clone https://github.com/peczenyj/structalign
 cd structalign
-make build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
-make check          # gofmt, vet, build, and a smoke test against ./_example
-make help           # list all targets
+task build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
+task ci             # lint, build, test, and a smoke test against ./_example
+task --list         # list all tasks
 ```
 
-The program is a single file at `cmd/structalign/main.go`; `_example/` holds sample
-structs for manual testing. The leading underscore keeps the Go tool from treating
-it as a package, so it stays out of `go build ./...` and friends.
+`cmd/structalign/main.go` is a thin entrypoint; the implementation lives in small
+packages under `pkg/common` (contracts) and `internal/` (loader, align, layout,
+ui, app, …). `_example/` holds sample structs for manual testing — the leading
+underscore keeps the Go tool from treating it as a package, so it stays out of
+`go build ./...` and friends.
 
 ## Caveats inherited from fieldalignment
 
