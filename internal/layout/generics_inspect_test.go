@@ -115,3 +115,19 @@ func TestLayoutsGenericMultiParamMarker(t *testing.T) {
 	assert.Equal(t, "K=any, V=any", got[0].Fields[0].Assume, "both params listed in declaration order")
 	assert.Empty(t, got[0].Fields[1].Assume, "non-generic field has no marker")
 }
+
+func TestLayoutsGenericNamedConstraint(t *testing.T) {
+	// A constraint using a named type (not a tilde ~type) should also resolve
+	// to its underlying type's size.
+	src := "package sample\n\ntype MyInt int\ntype Box[T MyInt] struct {\n\tValue T\n}\n"
+	tgt := testutil.Target(t, src)
+
+	got := layout.New().Layouts(tgt, common.Options{Patterns: []string{"Box"}})
+	require.Len(t, got, 1)
+
+	l := got[0]
+	// If it correctly resolves MyInt -> int, size should be 8 (on amd64/testutil default).
+	// If it defaults to any, size would be 16.
+	assert.Equal(t, int64(8), l.Fields[0].Size, "T should resolve to int (8 bytes), not any (16 bytes)")
+	assert.Equal(t, "T=int", l.Fields[0].Assume)
+}
