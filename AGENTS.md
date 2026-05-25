@@ -21,9 +21,10 @@ The program is split into small, decoupled packages:
 - `internal/` — the implementations: `loader` (go/packages adapter), `align`
   (runs the analyzer → findings), `layout` (computes struct layouts), `sizes`
   (`go/types` sizing adapter), `textdiff` (go-udiff line diff), `match` (glob
-  filtering), `ui` (the `Printer` — all rendering + color/width helpers), `app`
-  (flag parsing + wiring). Plus `testutil` (in-process `Target` builder for tests)
-  and `mocks` (mockery-generated, test-only).
+  filtering), `structfilter` (generated-file and `cpu.CacheLinePad` predicates),
+  `ui` (the `Printer` — all rendering + color/width helpers), `app` (flag parsing
+  + wiring). Plus `testutil` (in-process `Target` builder for tests) and `mocks`
+  (mockery-generated, test-only).
 
 `_example/types.go` is sample input used for manual testing; the leading
 underscore makes the Go tool skip the directory, so it never enters `./...`.
@@ -117,6 +118,18 @@ to swap it back for the internal package — it won't compile from this module.
 - **`align` and `layout` return data, `ui` renders it.** Keep that split: no
   printing in the logic packages, no analysis in `ui`. New output formatting goes
   in `ui`; new analysis/derived fields go on the `common` types.
+- **Scan options travel in `common.Options`** (`Patterns`, `KeepTags`,
+  `IncludeGenerated`, `SkipCachePadded`), passed to `Aligner.Findings` /
+  `Inspector.Layouts`. `align`/`layout` apply the filters via `internal/structfilter`
+  (`InGeneratedFile` uses `go/ast.IsGenerated`; `HasCacheLinePad` checks for a
+  `golang.org/x/sys/cpu.CacheLinePad` field). **Generated files are skipped by
+  default** (`-generated` opts in); `_test.go` is loaded only with `-tests`
+  (`loader.New(tests)`); `-exclude` drops packages by import-path regexp in `app`.
+  Add a new scan knob to `Options`, not as another positional arg.
+- **Diff presentation extras** live on `common.Finding`: `OldSize`/`NewSize` (parsed
+  from the analyzer message) drive the `(NN.NN% smaller)` suffix, and `TypeParams`
+  (e.g. `"[T]"`) lets `ui` render `type Name[T] struct {` for generics. Generic
+  diffs use the type params' assumed sizes; inspect mode skips generics.
 - **Struct name labeling** depends on `structNameIndex` (in `align`) mapping
   `StructType.Pos()` to the declared type name, because the analyzer reports at
   that position. Anonymous structs have no name and are filtered out by any

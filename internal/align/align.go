@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/fieldalignment"
@@ -94,6 +95,7 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 		}
 	}
 	f.Name = names[f.Pos]
+	f.TypeParams = typeParamNames(t, f.Name)
 	f.OldSize, f.NewSize = parseSizes(f.Message)
 
 	if len(opts.Patterns) > 0 && !match.MatchAny(opts.Patterns, f.Name) {
@@ -124,6 +126,31 @@ func isCachePadded(t common.Target, name string) bool {
 	}
 	st, ok := tn.Type().Underlying().(*types.Struct)
 	return ok && structfilter.HasCacheLinePad(st)
+}
+
+// typeParamNames returns the bracketed type-parameter names of the named type,
+// e.g. "[T]" or "[K, V]"; empty for a non-generic or anonymous type.
+func typeParamNames(t common.Target, name string) string {
+	if name == "" {
+		return ""
+	}
+	tn, ok := t.Types.Scope().Lookup(name).(*types.TypeName)
+	if !ok {
+		return ""
+	}
+	named, ok := tn.Type().(*types.Named)
+	if !ok {
+		return ""
+	}
+	tps := named.TypeParams()
+	if tps == nil || tps.Len() == 0 {
+		return ""
+	}
+	parts := make([]string, tps.Len())
+	for i := range tps.Len() {
+		parts[i] = tps.At(i).Obj().Name()
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 // parseSizes extracts the two integers the fieldalignment message reports,
