@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/peczenyj/structalign)](https://goreportcard.com/report/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/peczenyj/structalign?sort=semver)](https://github.com/peczenyj/structalign/releases/latest)
+[![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
 
