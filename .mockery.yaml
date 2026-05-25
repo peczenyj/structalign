@@ -1,7 +1,8 @@
-# mockery v2 config. Generates mocks for the public contracts in pkg/common into
-# a single test-only package internal/mocks. Run via `task generate`.
+---
+issue-845-fix: true
+resolve-type-alias: false
 quiet: false
-with-expecter: true
+disable-version-string: true
 dir: "internal/mocks"
 mockname: "{{.InterfaceName}}"
 outpkg: "mocks"

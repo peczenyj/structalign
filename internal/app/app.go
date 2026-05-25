@@ -60,7 +60,7 @@ func New(stdout, stderr io.Writer) *App {
 type options struct {
 	diff            common.DiffStyle
 	width           int
-	color           string
+	colorize        common.Colorize
 	typeFilter      string
 	inspect         bool
 	verbose         bool
@@ -81,9 +81,10 @@ func (a *App) Run(args []string) int {
 	fs := flag.NewFlagSet("structalign", flag.ContinueOnError)
 	fs.SetOutput(a.Stderr)
 	opt.diff = common.DiffUnified // zero value is DiffUnified; set for clarity
-	fs.Var(&opt.diff, "diff", "diff style: unified | side | none")
+	fs.Var(&opt.diff, "diff", fmt.Sprintf("diff style: %s (default %q)", opt.diff.Type(), opt.diff.String()))
 	fs.IntVar(&opt.width, "width", 0, "column width per side for -diff=side (0 = auto from terminal)")
-	fs.StringVar(&opt.color, "color", "auto", "colorize: auto | always | never")
+	opt.colorize = common.ColorizeAuto // zero value is ColorizeAuto; set for clarity
+	fs.Var(&opt.colorize, "color", fmt.Sprintf("colorize: %s (default %q)", opt.colorize.Type(), opt.colorize.String()))
 	fs.StringVar(&opt.typeFilter, "type", "", "only consider named structs matching this comma-separated list of glob patterns; empty means all")
 	fs.BoolVar(&opt.inspect, "inspect", false, "inspect layout instead of diffing")
 	fs.BoolVar(&opt.verbose, "verbose", false, "in -inspect mode, show padding on its own _ line")
@@ -136,7 +137,7 @@ func (a *App) Run(args []string) int {
 	patterns := match.ParsePatterns(opt.typeFilter)
 	printer := &ui.Printer{
 		Out:   a.Stdout,
-		Color: ui.WantColor(opt.color, stdoutFile(a.Stdout)),
+		Color: ui.WantColor(opt.colorize, stdoutFile(a.Stdout)),
 		Width: width,
 	}
 

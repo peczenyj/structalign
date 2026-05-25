@@ -64,6 +64,17 @@ tasks:
       - golangci-lint fmt {{.PKG_PATH_LIST}}
 
   generate:
+    desc: "Regenerate code and mocks"
+    cmds:
+      - task: generate:code
+      - task: generate:mocks
+
+  generate:code:
+    desc: "Regenerate code with go generate"
+    cmds:
+      - go generate {{.PKG_PATH_LIST}}
+
+  generate:mocks:
     desc: "Regenerate mocks with mockery (skipped when .mockery.yaml is absent)"
     cmds:
       - mockery

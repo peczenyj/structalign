@@ -15,7 +15,7 @@ The program is split into small, decoupled packages:
 
 - `main.go` (module root) — a thin entrypoint: `os.Exit(app.New(os.Stdout, os.Stderr).Run(os.Args[1:]))`.
 - `pkg/common` — the public **contracts**: data types (`Target`, `Finding`,
-  `Layout`, `LayoutField`, `DiffStyle`) and interfaces (`Loader`, `Aligner`,
+  `Layout`, `LayoutField`, `DiffStyle`, `Colorize`) and interfaces (`Loader`, `Aligner`,
   `Inspector`, `Sizes`). Kept out of `internal/` so mockery can generate mocks
   from a non-internal source.
 - `internal/` — the implementations: `loader` (go/packages adapter), `align`
@@ -43,14 +43,14 @@ task lint                  # golangci-lint v2 (lint + formatters: gofumpt/goimpo
 task test                  # gotestsum over all packages
 task test -- -update       # regenerate golden fixtures (internal/ui/testdata/*.golden)
 task smoke                 # run both modes against ./_example
-task generate              # regenerate mocks (mockery) — runs when .mockery.yaml is present
+task generate              # regenerate code (go generate) + mocks (mockery); subtasks generate:code / generate:mocks
 task ci                    # full pre-push gate: tidy:check, lint, build, test, smoke
 go run . [flags] [packages]                   # packages: ./..., import paths, dirs, files
 ```
 
-`enumer` and `mockery` are code generators; `DiffStyle` (`pkg/common`) is an
-enumer-generated `uint8` enum (`go generate ./pkg/common` after changing its
-constants), and mocks come from `mockery`. Generated files (`*_enumer.go`,
+`enumer` and `mockery` are code generators; `DiffStyle` and `Colorize`
+(`pkg/common`) are enumer-generated `uint8` enums (`go generate ./pkg/common`
+after changing their constants), and mocks come from `mockery`. Generated files (`*_enumer.go`,
 `internal/mocks/*`) are committed — regenerate, never hand-edit.
 
 Exit code is meaningful: diff modes exit **1** when any reordering is found
@@ -145,10 +145,12 @@ to swap it back for the internal package — it won't compile from this module.
 - **Tag stripping** (`stripStructTags` in `align`, on by default; `-tags` preserves them) removes diff
   noise from gofmt re-aligning tags when columns shift; best-effort (falls back to
   original on parse error). Tags never affect layout numbers.
-- **`DiffStyle` is an enumer-generated `uint8` enum** that implements `flag.Value`
-  (the `-diff` flag binds via `flag.Var`). Change the constants in
-  `pkg/common/diffstyle.go`, then `go generate ./pkg/common`.
-- Color, width, and padding verbosity live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY and
+- **`DiffStyle` and `Colorize` are enumer-generated `uint8` enums** that implement
+  `flag.Value` (the `-diff` and `-color` flags bind via `flag.Var`; their `Type()`
+  method feeds the usage strings). Change the constants in
+  `pkg/common/diffstyle.go` / `pkg/common/colorize.go`, then `go generate ./pkg/common`.
+- Color, width, and padding verbosity live in `ui`: `ui.WantColor(colorize, out)` takes a
+  `common.Colorize` (auto = stdout is a TTY and
   `NO_COLOR` is unset; `-color=always` overrides `NO_COLOR`, per no-color.org),
   `ui.ResolveWidth(out)` (side-by-side column width from the terminal size), and
   the `-verbose` flag (whether padding gets its own `_` line in inspect mode).
