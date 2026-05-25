@@ -20,9 +20,9 @@ func (_m *Aligner) EXPECT() *Aligner_Expecter {
 	return &Aligner_Expecter{mock: &_m.Mock}
 }
 
-// Findings provides a mock function with given fields: t, patterns, keepTags
-func (_m *Aligner) Findings(t common.Target, patterns []string, keepTags bool) ([]common.Finding, error) {
-	ret := _m.Called(t, patterns, keepTags)
+// Findings provides a mock function with given fields: t, opts
+func (_m *Aligner) Findings(t common.Target, opts common.Options) ([]common.Finding, error) {
+	ret := _m.Called(t, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Findings")
@@ -30,19 +30,19 @@ func (_m *Aligner) Findings(t common.Target, patterns []string, keepTags bool) (
 
 	var r0 []common.Finding
 	var r1 error
-	if rf, ok := ret.Get(0).(func(common.Target, []string, bool) ([]common.Finding, error)); ok {
-		return rf(t, patterns, keepTags)
+	if rf, ok := ret.Get(0).(func(common.Target, common.Options) ([]common.Finding, error)); ok {
+		return rf(t, opts)
 	}
-	if rf, ok := ret.Get(0).(func(common.Target, []string, bool) []common.Finding); ok {
-		r0 = rf(t, patterns, keepTags)
+	if rf, ok := ret.Get(0).(func(common.Target, common.Options) []common.Finding); ok {
+		r0 = rf(t, opts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]common.Finding)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(common.Target, []string, bool) error); ok {
-		r1 = rf(t, patterns, keepTags)
+	if rf, ok := ret.Get(1).(func(common.Target, common.Options) error); ok {
+		r1 = rf(t, opts)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -57,15 +57,14 @@ type Aligner_Findings_Call struct {
 
 // Findings is a helper method to define mock.On call
 //   - t common.Target
-//   - patterns []string
-//   - keepTags bool
-func (_e *Aligner_Expecter) Findings(t interface{}, patterns interface{}, keepTags interface{}) *Aligner_Findings_Call {
-	return &Aligner_Findings_Call{Call: _e.mock.On("Findings", t, patterns, keepTags)}
+//   - opts common.Options
+func (_e *Aligner_Expecter) Findings(t interface{}, opts interface{}) *Aligner_Findings_Call {
+	return &Aligner_Findings_Call{Call: _e.mock.On("Findings", t, opts)}
 }
 
-func (_c *Aligner_Findings_Call) Run(run func(t common.Target, patterns []string, keepTags bool)) *Aligner_Findings_Call {
+func (_c *Aligner_Findings_Call) Run(run func(t common.Target, opts common.Options)) *Aligner_Findings_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(common.Target), args[1].([]string), args[2].(bool))
+		run(args[0].(common.Target), args[1].(common.Options))
 	})
 	return _c
 }
@@ -75,7 +74,7 @@ func (_c *Aligner_Findings_Call) Return(_a0 []common.Finding, _a1 error) *Aligne
 	return _c
 }
 
-func (_c *Aligner_Findings_Call) RunAndReturn(run func(common.Target, []string, bool) ([]common.Finding, error)) *Aligner_Findings_Call {
+func (_c *Aligner_Findings_Call) RunAndReturn(run func(common.Target, common.Options) ([]common.Finding, error)) *Aligner_Findings_Call {
 	_c.Call.Return(run)
 	return _c
 }

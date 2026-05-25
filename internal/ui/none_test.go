@@ -16,7 +16,7 @@ import (
 // sampleSrc is defined in printer_test.go (same package).
 func TestRenderNoneStyle(t *testing.T) {
 	tgt := testutil.Target(t, sampleSrc)
-	findings, err := align.New().Findings(tgt, []string{"Mixed"}, false)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Mixed"}})
 	require.NoError(t, err)
 
 	var buf bytes.Buffer

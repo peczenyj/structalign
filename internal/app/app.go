@@ -111,10 +111,11 @@ func (a *App) Run(args []string) int {
 		if t.Types == nil || t.Sizes == nil {
 			continue
 		}
+		o := common.Options{Patterns: patterns, KeepTags: opt.tags}
 		if opt.inspect {
-			total += printer.RenderLayouts(a.Inspector.Layouts(t, patterns), opt.verbose, opt.tags)
+			total += printer.RenderLayouts(a.Inspector.Layouts(t, o), opt.verbose, opt.tags)
 		} else {
-			findings, ferr := a.Aligner.Findings(t, patterns, opt.tags)
+			findings, ferr := a.Aligner.Findings(t, o)
 			if ferr != nil {
 				fmt.Fprintf(a.Stderr, "structalign: %s: %v\n", t.PkgPath, ferr)
 				continue
