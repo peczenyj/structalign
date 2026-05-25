@@ -13,7 +13,8 @@ import (
 
 func TestNew(t *testing.T) {
 	a := app.New(os.Stdout, os.Stderr)
-	require.NotNil(t, a.Loader)
+	// Loader is nil in production; it is resolved lazily inside Run from the -tests flag.
+	require.Nil(t, a.Loader)
 	require.NotNil(t, a.Aligner)
 	require.NotNil(t, a.Inspector)
 }

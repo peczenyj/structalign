@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 
 	"github.com/peczenyj/structalign/internal/align"
@@ -32,7 +33,6 @@ type App struct {
 // New returns an App wired with the production implementations.
 func New(stdout, stderr io.Writer) *App {
 	return &App{
-		Loader:    loader.New(),
 		Aligner:   align.New(),
 		Inspector: layout.New(),
 		Stdout:    stdout,
@@ -41,14 +41,18 @@ func New(stdout, stderr io.Writer) *App {
 }
 
 type options struct {
-	diff        common.DiffStyle
-	width       int
-	color       string
-	typeFilter  string
-	inspect     bool
-	verbose     bool
-	tags        bool
-	showVersion bool
+	diff            common.DiffStyle
+	width           int
+	color           string
+	typeFilter      string
+	inspect         bool
+	verbose         bool
+	tags            bool
+	showVersion     bool
+	exclude         string
+	tests           bool
+	generated       bool
+	skipCachePadded bool
 }
 
 // Run parses args (excluding argv[0]) and executes. Returns the process exit
@@ -68,6 +72,10 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.verbose, "verbose", false, "in -inspect mode, show padding on its own _ line")
 	fs.BoolVar(&opt.tags, "tags", false, "preserve struct field tags in output (default: strip them)")
 	fs.BoolVar(&opt.showVersion, "version", false, "print version and exit")
+	fs.StringVar(&opt.exclude, "exclude", "^unsafe$|^builtin$", "exclude packages whose import path matches this regexp")
+	fs.BoolVar(&opt.tests, "tests", false, "also analyze _test.go files")
+	fs.BoolVar(&opt.generated, "generated", false, "also analyze generated files (// Code generated ... DO NOT EDIT.)")
+	fs.BoolVar(&opt.skipCachePadded, "skip-cache-padded", false, "skip structs containing a golang.org/x/sys/cpu.CacheLinePad field")
 	fs.Usage = func() {
 		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
@@ -85,6 +93,12 @@ func (a *App) Run(args []string) int {
 		return 2
 	}
 
+	excludeRE, err := regexp.Compile(opt.exclude)
+	if err != nil {
+		fmt.Fprintf(a.Stderr, "structalign: invalid -exclude regexp: %v\n", err)
+		return 2
+	}
+
 	width := opt.width
 	if width <= 0 {
 		width = ui.ResolveWidth(stdoutFile(a.Stdout))
@@ -96,7 +110,12 @@ func (a *App) Run(args []string) int {
 		Width: width,
 	}
 
-	targets, err := a.Loader.Load(fs.Args()...)
+	ld := a.Loader
+	if ld == nil {
+		ld = loader.New(opt.tests)
+	}
+
+	targets, err := ld.Load(fs.Args()...)
 	if err != nil {
 		fmt.Fprintf(a.Stderr, "structalign: %v\n", err)
 		return 2
@@ -105,13 +124,21 @@ func (a *App) Run(args []string) int {
 
 	total := 0
 	for _, t := range targets {
+		if excludeRE.MatchString(t.PkgPath) {
+			continue
+		}
 		for _, e := range t.Errors {
 			fmt.Fprintf(a.Stderr, "structalign: %s: %v\n", t.PkgPath, e)
 		}
 		if t.Types == nil || t.Sizes == nil {
 			continue
 		}
-		o := common.Options{Patterns: patterns, KeepTags: opt.tags}
+		o := common.Options{
+			Patterns:         patterns,
+			KeepTags:         opt.tags,
+			IncludeGenerated: opt.generated,
+			SkipCachePadded:  opt.skipCachePadded,
+		}
 		if opt.inspect {
 			total += printer.RenderLayouts(a.Inspector.Layouts(t, o), opt.verbose, opt.tags)
 		} else {
