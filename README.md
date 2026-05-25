@@ -112,6 +112,10 @@ structalign [flags] [packages]
   -version        print version and exit
 ```
 
+In the default `-color=auto`, color is emitted only when stdout is a terminal and
+the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
+(any non-empty value) disables color; an explicit `-color=always` overrides it.
+
 Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
 CI as a check. Inspect mode is informational and always exits 0.
 
