@@ -3,6 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/peczenyj/structalign.svg)](https://pkg.go.dev/github.com/peczenyj/structalign)
 [![Go Report Card](https://goreportcard.com/badge/github.com/peczenyj/structalign)](https://goreportcard.com/report/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/peczenyj/structalign/graph/badge.svg)](https://codecov.io/gh/peczenyj/structalign)
 [![Latest release](https://img.shields.io/github/v/release/peczenyj/structalign?sort=semver)](https://github.com/peczenyj/structalign/releases/latest)
 [![CodeQL](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql)
 [![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
