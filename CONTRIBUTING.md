@@ -50,6 +50,17 @@ is what drives the changelog, so the prefix matters:
 
 Mark breaking changes with a `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer.
 
+## Pull Request Process
+
+1. Branch off `devel` (e.g. `feature/<topic>`); never target `main` directly.
+2. Make your change **with tests**, and run `task ci` until it's green.
+3. Use [Conventional Commits](https://www.conventionalcommits.org) (see above) so
+   the changelog stays accurate.
+4. Open the PR against `devel` and fill in the pull-request template. Keep it
+   focused — one logical change per PR.
+5. CI (lint, build + test across the Go matrix, CodeQL, dependency review) must
+   pass; a maintainer then reviews and merges.
+
 ## Branching (git-flow)
 
 - `main` — production; every commit is a tagged release.
