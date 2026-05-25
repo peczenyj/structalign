@@ -65,3 +65,22 @@ func TestRunInspectExitsZero(t *testing.T) {
 	assert.Equal(t, 0, code, "inspect mode always exits 0")
 	assert.Contains(t, out.String(), "type Mixed struct")
 }
+
+func TestRunExcludeSkipsMatchingPackages(t *testing.T) {
+	tgt := testutil.Target(t, src) // PkgPath is "sample"
+	var out, errb bytes.Buffer
+	mockLoader := mocks.NewLoader(t)
+	mockLoader.EXPECT().Load(mock.Anything).Return([]common.Target{tgt}, nil)
+	a := &app.App{
+		Loader:    mockLoader,
+		Aligner:   align.New(),
+		Inspector: layout.New(),
+		Stdout:    &out,
+		Stderr:    &errb,
+	}
+	// -exclude=^sample$ matches the only package, so nothing is analyzed.
+	code := a.Run([]string{"-exclude=^sample$", "-type=Mixed", "pkg"})
+	assert.Equal(t, 0, code, "all packages excluded → exit 0")
+	assert.Empty(t, out.String(), "no diff output expected when all packages are excluded")
+	assert.Contains(t, errb.String(), "no struct reorderings found")
+}

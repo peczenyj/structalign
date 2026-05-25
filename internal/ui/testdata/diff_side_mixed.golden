@@ -1,7 +1,7 @@
-src.go:3:12: Mixed: struct of size 24 could be 16
+src.go:3:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
-  struct {                     │ struct {                    
+  type Mixed struct {          │ type Mixed struct {         
                                │     B int64                 
       A bool                   │     A bool                  
       B int64                  │                             

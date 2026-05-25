@@ -9,8 +9,11 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"go/types"
 	"os"
+	"regexp"
 	"sort"
+	"strconv"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/fieldalignment"
@@ -18,8 +21,13 @@ import (
 	"golang.org/x/tools/go/ast/inspector"
 
 	"github.com/peczenyj/structalign/internal/match"
+	"github.com/peczenyj/structalign/internal/structfilter"
 	"github.com/peczenyj/structalign/pkg/common"
 )
+
+// sizeNumRE matches integer tokens in the fieldalignment diagnostic message,
+// e.g. "struct of size 24 could be 16" → ["24", "16"].
+var sizeNumRE = regexp.MustCompile(`\d+`)
 
 // Aligner implements common.Aligner.
 type Aligner struct{}
@@ -28,9 +36,8 @@ type Aligner struct{}
 func New() *Aligner { return &Aligner{} }
 
 // Findings runs the analyzer over t and returns one Finding per suggested
-// reordering, filtered by patterns (nil = all). When keepTags is false, field
-// tags are stripped from both original and proposed text.
-func (a *Aligner) Findings(t common.Target, patterns []string, keepTags bool) ([]common.Finding, error) {
+// reordering, controlled by opts.
+func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Finding, error) {
 	if len(t.Syntax) == 0 {
 		return nil, nil
 	}
@@ -47,26 +54,11 @@ func (a *Aligner) Findings(t common.Target, patterns []string, keepTags bool) ([
 		TypesSizes: t.Sizes, // common.Sizes satisfies types.Sizes
 		ResultOf:   map[*analysis.Analyzer]any{inspect.Analyzer: insp},
 		Report: func(d analysis.Diagnostic) {
-			f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
-			if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
-				e := d.SuggestedFixes[0].TextEdits[0]
-				f.Pos = e.Pos
-				f.Proposed = string(e.NewText)
-				f.Original = readSource(t.Fset, e.Pos, e.End)
-				if !keepTags {
-					if s, err := stripStructTags(f.Original); err == nil {
-						f.Original = s
-					}
-					if s, err := stripStructTags(f.Proposed); err == nil {
-						f.Proposed = s
-					}
-				}
-			}
-			f.Name = names[f.Pos]
-			if len(patterns) > 0 && !match.MatchAny(patterns, f.Name) {
+			f := buildFinding(t, d, names, opts)
+			if f == nil {
 				return
 			}
-			findings = append(findings, f)
+			findings = append(findings, *f)
 		},
 	}
 	if _, err := fieldalignment.Analyzer.Run(pass); err != nil {
@@ -80,6 +72,69 @@ func (a *Aligner) Findings(t common.Target, patterns []string, keepTags bool) ([
 		return pi.Offset < pj.Offset
 	})
 	return findings, nil
+}
+
+// buildFinding converts one analyzer diagnostic into a Finding, applying tag
+// stripping and all active filters. Returns nil when the finding should be
+// suppressed.
+func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, opts common.Options) *common.Finding {
+	f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
+	if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
+		e := d.SuggestedFixes[0].TextEdits[0]
+		f.Pos = e.Pos
+		f.Proposed = string(e.NewText)
+		f.Original = readSource(t.Fset, e.Pos, e.End)
+		if !opts.KeepTags {
+			if s, err := stripStructTags(f.Original); err == nil {
+				f.Original = s
+			}
+			if s, err := stripStructTags(f.Proposed); err == nil {
+				f.Proposed = s
+			}
+		}
+	}
+	f.Name = names[f.Pos]
+	f.OldSize, f.NewSize = parseSizes(f.Message)
+
+	if len(opts.Patterns) > 0 && !match.MatchAny(opts.Patterns, f.Name) {
+		return nil
+	}
+	if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, f.Pos) {
+		return nil
+	}
+	if opts.SkipCachePadded && isCachePadded(t, f.Name) {
+		return nil
+	}
+	return &f
+}
+
+// isCachePadded reports whether the named type in t's scope contains a
+// cpu.CacheLinePad field. Returns false for anonymous structs or missing names.
+func isCachePadded(t common.Target, name string) bool {
+	if name == "" {
+		return false
+	}
+	obj := t.Types.Scope().Lookup(name)
+	if obj == nil {
+		return false
+	}
+	tn, ok := obj.(*types.TypeName)
+	if !ok {
+		return false
+	}
+	st, ok := tn.Type().Underlying().(*types.Struct)
+	return ok && structfilter.HasCacheLinePad(st)
+}
+
+// parseSizes extracts the two integers the fieldalignment message reports,
+// e.g. "struct of size 24 could be 16" -> (24, 16). Returns (0,0) if absent.
+func parseSizes(msg string) (old, neu int64) {
+	nums := sizeNumRE.FindAllString(msg, 2)
+	if len(nums) == 2 {
+		old, _ = strconv.ParseInt(nums[0], 10, 64)
+		neu, _ = strconv.ParseInt(nums[1], 10, 64)
+	}
+	return old, neu
 }
 
 // structNameIndex maps the position of each named struct type's StructType node
