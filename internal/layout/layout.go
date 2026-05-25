@@ -173,7 +173,7 @@ func fieldAssume(typ types.Type, assumed []string) string {
 		return ""
 	}
 	used := make([]bool, len(assumed))
-	collectTypeParams(typ, used, map[types.Type]bool{})
+	collectTypeParams(typ, used, make(map[types.Type]bool))
 	parts := make([]string, 0, len(assumed))
 	for i, on := range used {
 		if on {
