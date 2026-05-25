@@ -32,12 +32,6 @@ linters:
         linters:
           - gocyclo
           - errcheck
-      # TEMPORARY: the monolithic cmd/structalign/main.go has a few high-complexity
-      # render/diff functions. These are split into focused packages during the
-      # v0.3.0 refactor; remove this block once main.go is reduced.
-      - path: cmd/structalign/main\.go
-        linters:
-          - gocyclo
 
 formatters:
   enable:

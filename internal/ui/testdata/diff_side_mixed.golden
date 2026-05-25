@@ -1,4 +1,4 @@
-_example/types.go:6:12: Mixed: struct of size 24 could be 16
+src.go:3:12: Mixed: struct of size 24 could be 16
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
   struct {                     │ struct {                    
