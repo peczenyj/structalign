@@ -14,7 +14,7 @@ import (
 // carries the standard "// Code generated ... DO NOT EDIT." marker.
 func InGeneratedFile(t common.Target, pos token.Pos) bool {
 	for _, f := range t.Syntax {
-		if f.FileStart <= pos && pos < f.FileEnd {
+		if pos >= f.FileStart && pos < f.FileEnd {
 			return ast.IsGenerated(f)
 		}
 	}

@@ -23,8 +23,7 @@ func makeCachePadStruct(t *testing.T) *types.Struct {
 	named := types.NewNamed(
 		types.NewTypeName(token.NoPos, cpuPkg, "CacheLinePad", nil),
 		underlying,
-		nil,
-	)
+		nil)
 	padField := types.NewField(token.NoPos, cpuPkg, "_", named, false)
 	int64Field := types.NewField(token.NoPos, nil, "A", types.Typ[types.Int64], false)
 	return types.NewStruct([]*types.Var{int64Field, padField}, nil)
@@ -49,8 +48,7 @@ func TestHasCacheLinePad_WrongPkgPath(t *testing.T) {
 	named := types.NewNamed(
 		types.NewTypeName(token.NoPos, wrongPkg, "CacheLinePad", nil),
 		underlying,
-		nil,
-	)
+		nil)
 	field := types.NewField(token.NoPos, nil, "_", named, false)
 	st := types.NewStruct([]*types.Var{field}, nil)
 	assert.False(t, structfilter.HasCacheLinePad(st), "same name but wrong package should not match")

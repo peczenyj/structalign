@@ -122,7 +122,7 @@ to swap it back for the internal package — it won't compile from this module.
   `IncludeGenerated`, `SkipCachePadded`), passed to `Aligner.Findings` /
   `Inspector.Layouts`. `align`/`layout` apply the filters via `internal/structfilter`
   (`InGeneratedFile` uses `go/ast.IsGenerated`; `HasCacheLinePad` checks for a
-  `golang.org/x/sys/cpu.CacheLinePad` field). **Generated files are skipped by
+  `golang.org/x/sys/cpu.CacheLinePad` field, skipped via `-skip-cache-padded`). **Generated files are skipped by
   default** (`-generated` opts in); `_test.go` is loaded only with `-tests`
   (`loader.New(tests)`); `-exclude` drops packages by import-path regexp in `app`.
   Add a new scan knob to `Options`, not as another positional arg.
@@ -142,12 +142,13 @@ to swap it back for the internal package — it won't compile from this module.
   `StructType.Pos()` to the declared type name, because the analyzer reports at
   that position. Anonymous structs have no name and are filtered out by any
   non-empty `-type` glob (`match.MatchAny`).
-- **Tag stripping** (`stripStructTags` in `align`, on by default) removes diff
+- **Tag stripping** (`stripStructTags` in `align`, on by default; `-tags` preserves them) removes diff
   noise from gofmt re-aligning tags when columns shift; best-effort (falls back to
   original on parse error). Tags never affect layout numbers.
 - **`DiffStyle` is an enumer-generated `uint8` enum** that implements `flag.Value`
   (the `-diff` flag binds via `flag.Var`). Change the constants in
   `pkg/common/diffstyle.go`, then `go generate ./pkg/common`.
-- Color/width live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY and
-  `NO_COLOR` is unset; `-color=always` overrides `NO_COLOR`, per no-color.org) and
-  `ui.ResolveWidth(out)` (side-by-side column width from the terminal size).
+- Color, width, and padding verbosity live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY and
+  `NO_COLOR` is unset; `-color=always` overrides `NO_COLOR`, per no-color.org),
+  `ui.ResolveWidth(out)` (side-by-side column width from the terminal size), and
+  the `-verbose` flag (whether padding gets its own `_` line in inspect mode).
