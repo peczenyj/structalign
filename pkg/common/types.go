@@ -40,6 +40,7 @@ type LayoutField struct {
 	Name    string
 	Type    string
 	Tag     string // raw struct tag without backticks, or ""
+	Assume  string // for a generic field, the assumed type param(s), e.g. "T=any" (else "")
 	Offset  int64
 	Size    int64
 	Align   int64
@@ -48,9 +49,11 @@ type LayoutField struct {
 
 // Layout is one named struct's computed memory layout.
 type Layout struct {
-	Name    string
-	Total   int64
-	Align   int64
-	Padding int64 // total padding across all fields
-	Fields  []LayoutField
+	Name       string
+	TypeParams string // for a generic type, e.g. "[T]" (else "")
+	Note       string // optional caveat shown above the struct (e.g. the generic disclaimer)
+	Total      int64
+	Align      int64
+	Padding    int64 // total padding across all fields
+	Fields     []LayoutField
 }

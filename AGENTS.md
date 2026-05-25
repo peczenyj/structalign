@@ -129,7 +129,15 @@ to swap it back for the internal package — it won't compile from this module.
 - **Diff presentation extras** live on `common.Finding`: `OldSize`/`NewSize` (parsed
   from the analyzer message) drive the `(NN.NN% smaller)` suffix, and `TypeParams`
   (e.g. `"[T]"`) lets `ui` render `type Name[T] struct {` for generics. Generic
-  diffs use the type params' assumed sizes; inspect mode skips generics.
+  diffs use the type params' assumed sizes; inspect instantiates a generic with a
+  representative type per parameter (`layout.representativeType`: constraint core
+  type, else `interface{}`) for sizing, but renders fields from the **origin**
+  struct so they stay source-faithful (`Value T`, not `Value any`). Each field
+  carries `LayoutField.Assume` (e.g. `"T=any"`, or `"K=any, V=any"`), computed by
+  walking the field's origin type for referenced type params (`layout.fieldAssume`
+  / `collectTypeParams`, which follows pointers/slices/maps/nested generics); `ui`
+  renders it as an aligned `-- assume …` marker, and `Layout.Note` carries the
+  top-line disclaimer.
 - **Struct name labeling** depends on `structNameIndex` (in `align`) mapping
   `StructType.Pos()` to the declared type name, because the analyzer reports at
   that position. Anonymous structs have no name and are filtered out by any
