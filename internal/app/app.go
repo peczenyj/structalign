@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"sort"
 
 	"github.com/peczenyj/structalign/internal/align"
@@ -20,6 +21,22 @@ import (
 
 // version is stamped at release time via -ldflags "-X ...app.version=...".
 var version = "dev"
+
+// resolveVersion returns the version to print for -version. A GoReleaser build
+// stamps `version` via -ldflags; for a `go install <module>@vX.Y.Z` build that
+// stamp is absent (still "dev"), so fall back to the module version embedded in
+// the build info.
+func resolveVersion() string {
+	if version != "dev" {
+		return version
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return version
+}
 
 // App holds the injectable dependencies and output streams.
 type App struct {
@@ -81,11 +98,24 @@ func (a *App) Run(args []string) int {
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
 		fs.PrintDefaults()
 	}
+	// Easter egg: fieldalignment has -fix; structalign deliberately only prints
+	// suggestions and never edits files. Caught before parsing, so -fix is never
+	// a registered flag and stays invisible in -help.
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == "-fix" || arg == "--fix" {
+			fmt.Fprintln(a.Stderr, "structalign: sorry, I don't do -fix — I only print the reordering, never touch your files.")
+			fmt.Fprintln(a.Stderr, "For an in-place rewrite, use fieldalignment -fix.")
+			return 2
+		}
+	}
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if opt.showVersion {
-		fmt.Fprintln(a.Stdout, version)
+		fmt.Fprintln(a.Stdout, resolveVersion())
 		return 0
 	}
 	if fs.NArg() == 0 {

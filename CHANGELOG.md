@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-25
+
+### Added
+
+- *(layout)* Inspect generic structs with a representative type + disclaimer
+- *(layout)* Keep generic fields source-faithful with per-field assume marker
+- *(app)* Nudge -fix users toward fieldalignment (easter egg)
+
+### Changed
+
+- Merge tag 'v0.4.0' into devel
+- Merge pull request #16 from peczenyj/feature/version-buildinfo
+- Merge pull request #17 from peczenyj/feature/inspect-generics
+- Merge pull request #18 from peczenyj/feature/fix-easter-egg
+- Merge pull request #19 from peczenyj/docs/task-commands
+
+### Fixed
+
+- *(app)* Report the module version for `go install` builds
+
+### Documentation
+
+- Use task (not make) in command examples
+
 ## [0.4.0] - 2026-05-25
 
 ### Added
@@ -23,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move main to the module root
 - Merge pull request #14 from peczenyj/feature/v0.4.0-filters-and-display
 - Merge pull request #15 from peczenyj/feature/v0.4.0-docs
+- Merge branch 'release/v0.4.0'
 
 ### Documentation
 
@@ -110,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.5.0]: https://github.com///compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com///compare/v0.3.0..v0.4.0
 [0.3.0]: https://github.com///compare/v0.2.0..v0.3.0
 [0.2.0]: https://github.com///compare/v0.1.0..v0.2.0
