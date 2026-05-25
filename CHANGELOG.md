@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-05-25
+
+### Changed
+
+- Merge tag 'v0.5.1' into devel
+- Revert "fix: refine representativeType logic for generics"
+- Merge pull request #22 from peczenyj/pr/refine-layout-logic
+- Merge pull request #23 from peczenyj/feature/ci-go-consistent
+
+### Fixed
+
+- Refine representativeType logic for generics
+- Refine representativeType logic for generics
+
+### Documentation
+
+- Add missing flags to AGENTS.md
+
 ## [0.5.1] - 2026-05-25
 
 ### Added
@@ -15,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Merge tag 'v0.5.0' into devel
 - Merge pull request #21 from peczenyj/feature/no-color
+- Merge branch 'release/v0.5.1'
 
 ## [0.5.0] - 2026-05-25
 
@@ -147,6 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.5.2]: https://github.com///compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com///compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com///compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com///compare/v0.3.0..v0.4.0
