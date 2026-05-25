@@ -3,8 +3,12 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/peczenyj/structalign.svg)](https://pkg.go.dev/github.com/peczenyj/structalign)
 [![Go Report Card](https://goreportcard.com/badge/github.com/peczenyj/structalign)](https://goreportcard.com/report/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/peczenyj/structalign/graph/badge.svg)](https://codecov.io/gh/peczenyj/structalign)
 [![Latest release](https://img.shields.io/github/v/release/peczenyj/structalign?sort=semver)](https://github.com/peczenyj/structalign/releases/latest)
+[![CodeQL](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql)
+[![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
 > rewrite — plus a per-field **layout inspector**.
@@ -215,19 +219,23 @@ exactly. Only the *presentation* is new.
 
 ## Building from source
 
-Requires **Go 1.25+** (the floor set by `golang.org/x/tools`).
+Requires **Go 1.25+** (the floor set by `golang.org/x/tools`). The repo uses
+[Task](https://taskfile.dev) ([`golangci-lint`](https://golangci-lint.run) handles
+both linting and formatting); the `Makefile` just delegates to `task`.
 
 ```sh
 git clone https://github.com/peczenyj/structalign
 cd structalign
-make build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
-make check          # gofmt, vet, build, and a smoke test against ./_example
-make help           # list all targets
+task build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
+task ci             # lint, build, test, and a smoke test against ./_example
+task --list         # list all tasks
 ```
 
-The program is a single file at `cmd/structalign/main.go`; `_example/` holds sample
-structs for manual testing. The leading underscore keeps the Go tool from treating
-it as a package, so it stays out of `go build ./...` and friends.
+`cmd/structalign/main.go` is a thin entrypoint; the implementation lives in small
+packages under `pkg/common` (contracts) and `internal/` (loader, align, layout,
+ui, app, …). `_example/` holds sample structs for manual testing — the leading
+underscore keeps the Go tool from treating it as a package, so it stays out of
+`go build ./...` and friends.
 
 ## Caveats inherited from fieldalignment
 

@@ -8,5 +8,12 @@
 *.out
 *.test
 
+# Coverage reports (uploaded to Codecov in CI; see Taskfile `clean`)
+coverage.txt
+coverage.html
+
 # GoReleaser output
 /dist/
+
+# AI planning docs (local only)
+/docs/superpowers/

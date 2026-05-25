@@ -9,7 +9,20 @@ reordered to use less memory — printing the reordered struct plus a diff, inst
 of rewriting files the way `fieldalignment -fix` does. It also has an `-inspect`
 mode that prints a struct's memory layout (offset/size/align/padding per field).
 
-The entire program lives in `cmd/structalign/main.go` (one `package main`).
+The program is split into small, decoupled packages:
+
+- `cmd/structalign/main.go` — a thin entrypoint: `os.Exit(app.New(os.Stdout, os.Stderr).Run(os.Args[1:]))`.
+- `pkg/common` — the public **contracts**: data types (`Target`, `Finding`,
+  `Layout`, `LayoutField`, `DiffStyle`) and interfaces (`Loader`, `Aligner`,
+  `Inspector`, `Sizes`). Kept out of `internal/` so mockery can generate mocks
+  from a non-internal source.
+- `internal/` — the implementations: `loader` (go/packages adapter), `align`
+  (runs the analyzer → findings), `layout` (computes struct layouts), `sizes`
+  (`go/types` sizing adapter), `textdiff` (go-udiff line diff), `match` (glob
+  filtering), `ui` (the `Printer` — all rendering + color/width helpers), `app`
+  (flag parsing + wiring). Plus `testutil` (in-process `Target` builder for tests)
+  and `mocks` (mockery-generated, test-only).
+
 `_example/types.go` is sample input used for manual testing; the leading
 underscore makes the Go tool skip the directory, so it never enters `./...`.
 The module path is `github.com/peczenyj/structalign`, so the install target is
@@ -17,55 +30,74 @@ The module path is `github.com/peczenyj/structalign`, so the install target is
 
 ## Commands
 
+The repo uses [Task](https://taskfile.dev); the `Makefile` is a thin delegator
+(`make X` runs `task X`). Run `task --list` to see everything.
+
 ```
-go build -o structalign ./cmd/structalign     # produces ./structalign
-go vet ./...
-go test ./...                                  # unit + golden tests
-go test ./... -update                          # regenerate testdata/*.golden
+task build                 # -> ./structalign
+task lint                  # golangci-lint v2 (lint + formatters: gofumpt/goimports/gci)
+task test                  # gotestsum over all packages
+task test -- -update       # regenerate golden fixtures (internal/ui/testdata/*.golden)
+task smoke                 # run both modes against ./_example
+task generate              # regenerate mocks (mockery) — runs when .mockery.yaml is present
+task ci                    # full pre-push gate: tidy:check, lint, build, test, smoke
 go run ./cmd/structalign [flags] [packages]   # packages: ./..., import paths, dirs, files
-go run ./cmd/structalign ./_example            # exercise diff mode
-go run ./cmd/structalign -inspect ./_example   # exercise inspect mode
 ```
 
-Tests live in `cmd/structalign/main_test.go` (same `package main`, so they reach
-unexported funcs). Two layers: table-driven unit tests for the pure helpers
-(`parsePatterns`, `matchAny`, `normalizeArgs`, `stripStructTags`, `relPath`,
-`lcsDiff`, `renderUnified`), and golden-file integration tests that run the real
-`loadPackages` → `diffPackage`/`inspectStructs` pipeline against `./_example` and
-compare to `testdata/*.golden`. The golden test `t.Chdir`s to the repo root so
-`./_example` resolves and paths render relative; regenerate fixtures with
-`-update`. Golden cases assume a **64-bit target** (`unsafe.Sizeof(uintptr) == 8`)
-and `t.Skip` otherwise, since `types.Sizes` depends on pointer width. Rendering is
-testable because `diffPackage`/`inspectStructs`/`render*` take an `io.Writer`
-(`main` passes `os.Stdout`).
+`enumer` and `mockery` are code generators; `DiffStyle` (`pkg/common`) is an
+enumer-generated `uint8` enum (`go generate ./pkg/common` after changing its
+constants), and mocks come from `mockery`. Generated files (`*_enumer.go`,
+`internal/mocks/*`) are committed — regenerate, never hand-edit.
 
 Exit code is meaningful: diff modes exit **1** when any reordering is found
 (CI-friendly), **0** when none; `-inspect` always exits 0.
 
 ## Core architecture
 
-The key design decision (see the package doc and README "How it works"): this tool
-**does not reimplement** the field-alignment algorithm. It runs the unmodified
-upstream `golang.org/x/tools/go/analysis/passes/fieldalignment.Analyzer` and
-intercepts the `SuggestedFix` it already produces. The pipeline:
+The key design decision (see the README "How it works"): this tool **does not
+reimplement** the field-alignment algorithm. `internal/align` runs the unmodified
+upstream `fieldalignment.Analyzer` and intercepts the `SuggestedFix` it already
+produces. The pipeline, orchestrated by `app.Run`:
 
-1. `main` resolves the CLI args (`normalizeArgs` rewrites bare `.go` files to
-   `file=` queries) and `loadPackages` loads them via
-   `golang.org/x/tools/go/packages` (`./...`, import paths, dirs, files). This
-   gives syntax, types, type info, and `TypesSizes` for the real build target.
-2. Per package, `diffPackage` runs the analyzer via an `analysis.Pass`, wiring
-   `pkg.Syntax`/`pkg.Types`/`pkg.TypesInfo`/`pkg.TypesSizes` and satisfying its
-   only dependency (the `inspect` pass) with `inspector.New(pkg.Syntax)`.
-3. A custom `Pass.Report` captures each diagnostic's single `TextEdit`: `NewText`
-   is the proposed reordered struct, and `readSource` reads the original source
-   slice between the edit's `Pos`/`End`.
-4. `lcsDiff` diffs the two via `github.com/aymanbagabas/go-udiff` (`udiff.Lines`),
-   and `render` emits unified / side-by-side / proposed-only output. Filenames
-   are shown relative to the working dir (`relPath`), since go/packages reports
-   absolute paths.
+1. **`loader.Load`** resolves CLI args via `golang.org/x/tools/go/packages`
+   (`./...`, import paths, dirs, and — via `normalizeArgs` — single `.go` files)
+   into `[]common.Target`. A `Target` is a loader-agnostic view of one typed
+   package (syntax, types, type info, sizes) — it hides `go/packages.Package`.
+2. **`align.Findings`** runs the analyzer over a `Target` (wiring an
+   `analysis.Pass` and satisfying the `inspect` pass with `inspector.New`) and
+   returns `[]common.Finding` — plain data (original + proposed struct text +
+   message), not rendered output. **`layout.Layouts`** is the parallel inspect
+   path: it reads `Sizes.Offsetsof`/`Sizeof`/`Alignof` to produce `[]common.Layout`.
+3. **`ui.Printer`** renders findings/layouts (unified / side-by-side /
+   proposed-only diff via `textdiff`, or annotated layout) to an `io.Writer`.
+   Because the logic packages return data and `ui` consumes it, rendering is
+   testable by injecting findings — no analyzer, no toolchain.
 
-Package load/type errors are reported to stderr but non-fatal — a
-partially-resolved package can still produce findings.
+Two **injectable wrappers** are the crux of the decoupling and testability:
+
+- **`common.Sizes`** abstracts `go/types` sizing. Its method set matches
+  `go/types.Sizes`, so a `common.Sizes` is assignable directly to
+  `analysis.Pass.TypesSizes`. Production uses the loaded package's sizes (host
+  `GOOS`/`GOARCH`); tests inject `sizes.ForArch("amd64")`, making golden output
+  deterministic on any host (no arch `t.Skip`).
+- **`common.Target`** hides `go/packages.Package`. `testutil.Target(tb, src)`
+  builds one from a source string in-process (`go/parser` + `go/types`, no
+  `go list` shell-out) — fast and hermetic. It runs the test from a temp dir
+  (`tb.Chdir`) and writes a relative `src.go`, so the analyzer's recorded
+  filename is a stable `"src.go"` (deterministic golden output) while
+  `align.readSource` can still read the bytes off disk.
+
+**Testing:** each package has black-box `_test` tests using
+`github.com/stretchr/testify` (`require`/`assert`). The golden tests live in
+`internal/ui` (build findings/layouts via `align`/`layout` against
+`testutil.Target`, compare to `testdata/*.golden`; regenerate with
+`task test -- -update`). mockery generates `Loader`/`Aligner`/`Inspector` mocks
+into `internal/mocks` (test-only, excluded from lint/coverage via the Taskfile's
+`PKG_LIST`); `Sizes` is intentionally **not** mocked — it has a real
+deterministic implementation.
+
+Package load/type errors are surfaced on each `Target.Errors` and printed to
+stderr but are non-fatal — a partially-resolved package can still produce findings.
 
 **Why go-udiff and not x/tools' own diff:** Go's internal-package rule forbids
 importing `golang.org/x/tools/internal/diff` from a module not rooted under
@@ -74,22 +106,23 @@ the importer is inside x/tools and this tool only touches its public API. go-udi
 is a public port of the same gopls diff code, so results are equivalent. Don't try
 to swap it back for the internal package — it won't compile from this module.
 
-`-inspect` mode is a separate path (`inspectStructs` / `computeLayout` /
-`renderLayout`) that never runs the analyzer; it reads `types.Sizes.Offsetsof` /
-`Sizeof` / `Alignof` directly to compute per-field padding.
-
 ## Things to keep consistent when editing
 
-- **Type sizes come from `go/packages`** (`pkg.TypesSizes`), i.e. the toolchain's
-  real target (host `GOOS`/`GOARCH` by default; override via env). It is no longer
-  hardcoded to amd64.
-- **Struct name labeling** depends on `structNameIndex` mapping `StructType.Pos()`
-  to the declared type name, because the analyzer reports diagnostics at exactly
+- **Type sizes flow through `common.Sizes`.** Production wraps the toolchain's
+  real target sizes (`pkg.TypesSizes`); tests inject `sizes.ForArch("amd64")`.
+  Don't reach for a hardcoded arch or a mock — use the interface.
+- **`align` and `layout` return data, `ui` renders it.** Keep that split: no
+  printing in the logic packages, no analysis in `ui`. New output formatting goes
+  in `ui`; new analysis/derived fields go on the `common` types.
+- **Struct name labeling** depends on `structNameIndex` (in `align`) mapping
+  `StructType.Pos()` to the declared type name, because the analyzer reports at
   that position. Anonymous structs have no name and are filtered out by any
-  non-empty `-type` glob (`matchAny`).
-- **Tag stripping** (`stripStructTags`, on by default) removes diff noise from
-  gofmt re-aligning tags when columns shift; it is applied to both original and
-  proposed text and is best-effort (falls back to original on parse error). Tags
-  never affect layout numbers.
-- Color output is gated on `wantColor` (auto = stdout is a TTY); `resolveWidth`
-  derives the side-by-side column width from the terminal size.
+  non-empty `-type` glob (`match.MatchAny`).
+- **Tag stripping** (`stripStructTags` in `align`, on by default) removes diff
+  noise from gofmt re-aligning tags when columns shift; best-effort (falls back to
+  original on parse error). Tags never affect layout numbers.
+- **`DiffStyle` is an enumer-generated `uint8` enum** that implements `flag.Value`
+  (the `-diff` flag binds via `flag.Var`). Change the constants in
+  `pkg/common/diffstyle.go`, then `go generate ./pkg/common`.
+- Color/width live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY) and
+  `ui.ResolveWidth(out)` (side-by-side column width from the terminal size).

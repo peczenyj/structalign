@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-25
+
+### Added
+
+- *(common)* Add public contracts (domain types + interfaces)
+- *(sizes)* Add common.Sizes adapter over go/types
+- *(match)* Extract pattern parsing and glob matching
+- *(loader)* Common.Loader over go/packages (Target mapping)
+- *(textdiff)* Extract line diff over go-udiff
+- *(align)* Common.Aligner producing findings as data
+- *(layout)* Common.Inspector computing struct layouts as data
+- *(ui)* Printer rendering + term helpers with golden tests
+
+### Changed
+
+- Merge tag 'v0.2.0' into devel
+- Update README.md
+- Merge pull request #7 from peczenyj/feature/tooling-task-golangci
+- *(common)* Generate DiffStyle as a uint8 enum via enumer
+- Merge pull request #8 from peczenyj/feature/pkg-common
+- Merge pull request #9 from peczenyj/feature/internal-sizes-match
+- Update README.md
+- Update README.md
+- Merge pull request #11 from peczenyj/feature/codecov
+- Merge pull request #10 from peczenyj/feature/internal-loader
+- Keep readSource verbatim; back testutil with a real on-disk file
+- Wire app package; reduce main.go to an entrypoint
+- Merge pull request #12 from peczenyj/feature/v0.3.0-decoupling
+- Merge pull request #13 from peczenyj/feature/v0.3.0-followup
+
+### Documentation
+
+- Describe the v0.3.0 package layout and Task workflow
+
 ## [0.2.0] - 2026-05-24
 
 ### Added
@@ -15,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Merge tag 'v0.1.0' into devel
 - Merge pull request #6 from peczenyj/feature/5-recursive-package-pattern
+- Merge branch 'release/v0.2.0'
 
 ## [0.1.0] - 2026-05-24
 
@@ -49,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.3.0]: https://github.com///compare/v0.2.0..v0.3.0
 [0.2.0]: https://github.com///compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com///tree/v0.1.0
 

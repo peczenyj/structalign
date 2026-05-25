@@ -1,0 +1,46 @@
+---
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  default: standard
+  enable:
+    - gocritic
+    - revive
+    - misspell
+    - gocyclo
+    - bodyclose
+    - errorlint
+    - prealloc
+  settings:
+    errcheck:
+      # Writes to an io.Writer/os.Stdout via fmt.Fprint* are best-effort; a failed
+      # write to the output stream is not actionable for this CLI.
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+    gocyclo:
+      min-complexity: 15
+    revive:
+      severity: warning
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/peczenyj/structalign)
