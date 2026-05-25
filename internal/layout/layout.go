@@ -104,19 +104,12 @@ func resolveStruct(named *types.Named, typ types.Type) (st, display *types.Struc
 func representativeType(tp *types.TypeParam) types.Type {
 	anyType := types.Universe.Lookup("any").Type()
 	c, ok := tp.Constraint().Underlying().(*types.Interface)
-	if !ok || c.Empty() {
+	if !ok {
 		return anyType
 	}
-	// Best-effort core type: if it embeds exactly one type, use its underlying.
-	// This covers `T ~int`, `T int`, `T MyInt`.
 	if c.NumEmbeddeds() == 1 {
-		emb := c.EmbeddedType(0)
-		if u, ok := emb.Underlying().(*types.Union); ok {
-			if u.Len() == 1 {
-				return u.Term(0).Type().Underlying()
-			}
-		} else {
-			return emb.Underlying()
+		if u, ok := c.EmbeddedType(0).(*types.Union); ok && u.Len() == 1 {
+			return u.Term(0).Type()
 		}
 	}
 	return anyType
