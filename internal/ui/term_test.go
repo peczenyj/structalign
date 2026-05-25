@@ -21,6 +21,18 @@ func TestWantColor(t *testing.T) {
 	assert.False(t, ui.WantColor("auto", w))
 }
 
+func TestWantColorHonorsNoColorEnv(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	// -color=always still wins over NO_COLOR (the convention defers to an
+	// explicit color flag); auto stays off.
+	assert.True(t, ui.WantColor("always", os.Stdout), "explicit -color=always overrides NO_COLOR")
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	t.Cleanup(func() { r.Close(); w.Close() })
+	assert.False(t, ui.WantColor("auto", w), "auto + NO_COLOR is off")
+}
+
 func TestResolveWidth(t *testing.T) {
 	// A pipe is not a terminal, so ResolveWidth falls back to $COLUMNS then 80.
 	r, w, err := os.Pipe()

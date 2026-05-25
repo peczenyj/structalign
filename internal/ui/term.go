@@ -7,20 +7,32 @@ import (
 	"golang.org/x/term"
 )
 
-// WantColor resolves the -color mode ("auto"|"always"|"never") against out.
+// WantColor resolves the -color mode ("auto"|"always"|"never") against out and
+// the environment. In "auto" mode it honors NO_COLOR (https://no-color.org); an
+// explicit -color=always still wins, per that convention.
 func WantColor(mode string, out *os.File) bool {
+	return wantColor(mode, os.Getenv("NO_COLOR") != "", isCharDevice(out))
+}
+
+// wantColor is the pure decision: "always" forces color on, "never" forces it
+// off, and "auto" emits color only on a terminal and only when NO_COLOR is unset.
+func wantColor(mode string, noColor, isTTY bool) bool {
 	switch mode {
 	case "always":
 		return true
 	case "never":
 		return false
 	default:
-		fi, err := out.Stat()
-		if err != nil {
-			return false
-		}
-		return fi.Mode()&os.ModeCharDevice != 0
+		return isTTY && !noColor
 	}
+}
+
+func isCharDevice(out *os.File) bool {
+	fi, err := out.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 // ResolveWidth returns the default per-side column width for side-by-side diff,
