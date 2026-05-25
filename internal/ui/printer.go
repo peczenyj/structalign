@@ -204,26 +204,47 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 		l.Name, l.TypeParams, l.Total, l.Align, l.Padding)
 	fmt.Fprintln(p.Out, paint(p.Color, cBold+cCyan, header)) //nolint:errcheck
 
+	comments, commentWidth := layoutComments(l.Fields, verbose)
+
 	for i, f := range l.Fields {
-		base := fmt.Sprintf("size: %2d, align: %d", f.Size, f.Align)
-		if verbose {
+		comment := comments[i]
+		rendered := comment
+		if !verbose && f.Padding > 0 {
+			rendered = paint(p.Color, cRed, comment)
+		}
+		line := fmt.Sprintf("\t%-*s // %s", declWidth, decls[i], rendered)
+		if f.Assume != "" {
+			pad := strings.Repeat(" ", commentWidth-len(comment))
+			line += pad + "   " + paint(p.Color, cDim, "-- assume "+f.Assume)
+		}
+		fmt.Fprintln(p.Out, line) //nolint:errcheck
+		if verbose && f.Padding > 0 {
 			// Field line carries no padding; padding gets its own `_` line.
-			fmt.Fprintf(p.Out, "\t%-*s // %s\n", declWidth, decls[i], base) //nolint:errcheck
-			if f.Padding > 0 {
-				pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.Padding)
-				fmt.Fprintln(p.Out, paint(p.Color, cRed, pad)) //nolint:errcheck
-			}
-		} else {
-			// Padding folds onto the field's own comment.
-			comment := base
-			if f.Padding > 0 {
-				comment = paint(p.Color, cRed, fmt.Sprintf("%s, padding: %d", base, f.Padding))
-			}
-			fmt.Fprintf(p.Out, "\t%-*s // %s\n", declWidth, decls[i], comment) //nolint:errcheck
+			pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.Padding)
+			fmt.Fprintln(p.Out, paint(p.Color, cRed, pad)) //nolint:errcheck
 		}
 	}
 	fmt.Fprintln(p.Out, "}") //nolint:errcheck
 	fmt.Fprintln(p.Out)      //nolint:errcheck
+}
+
+// layoutComments builds the plain (un-colored) comment text for each field line
+// and the widest of them, so a generic field's "-- assume T=any" marker can be
+// aligned in a column past every comment. In non-verbose mode the trailing
+// padding folds onto the comment; in verbose mode it gets its own line.
+func layoutComments(fields []common.LayoutField, verbose bool) (comments []string, width int) {
+	comments = make([]string, len(fields))
+	for i, f := range fields {
+		c := fmt.Sprintf("size: %2d, align: %d", f.Size, f.Align)
+		if !verbose && f.Padding > 0 {
+			c += fmt.Sprintf(", padding: %d", f.Padding)
+		}
+		comments[i] = c
+		if len(c) > width {
+			width = len(c)
+		}
+	}
+	return comments, width
 }
 
 func indent(s, pad string) string {

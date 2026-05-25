@@ -189,21 +189,27 @@ this one tool and honors the same `-type` filter.
 A generic struct has **no single layout** — `type Box[T any] struct{ … }` is laid
 out differently for every type argument (`Box[bool]` and `Box[[64]byte]` share
 nothing), so there is no concrete type to measure. Inspect therefore shows a
-**best-effort approximation**: each type parameter is replaced by a representative
+**best-effort approximation**: each type parameter is measured as a representative
 type — its constraint's core type (e.g. `~int` → `int`), or `interface{}` when the
-constraint is unbounded (`any`, `comparable`, unions) — and the output is prefixed
-with a disclaimer. Treat the numbers as indicative only; the real layout depends on
-how the type is instantiated.
+constraint is unbounded (`any`, `comparable`, unions). Fields keep their source
+form (`Value T`, not `Value any`), and every field whose size depends on a type
+parameter is annotated with the assumption it was measured under (`-- assume
+T=any`). The output is also prefixed with a disclaimer. Treat the numbers as
+indicative only; the real layout depends on how the type is instantiated.
 
 ```
 $ structalign -inspect -type=Generic ./_example
 // generic type — layout assumes T=any; the real layout depends on the type argument(s)
 type Generic[T] struct { // size: 32, align: 8, padding: 11
 	Flag bool    // size:  1, align: 1, padding: 7
-	Value any    // size: 16, align: 8
+	Value T      // size: 16, align: 8               -- assume T=any
 	Count uint32 // size:  4, align: 4, padding: 4
 }
 ```
+
+A field can depend on a type parameter indirectly — through a composite or a
+nested generic — and the marker follows it: `map[K]V` reports `-- assume K=any,
+V=any`, and `Inner[V]` reports `-- assume V=any`.
 
 ### Filtering by type name
 

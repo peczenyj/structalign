@@ -40,6 +40,7 @@ type LayoutField struct {
 	Name    string
 	Type    string
 	Tag     string // raw struct tag without backticks, or ""
+	Assume  string // for a generic field, the assumed type param(s), e.g. "T=any" (else "")
 	Offset  int64
 	Size    int64
 	Align   int64
