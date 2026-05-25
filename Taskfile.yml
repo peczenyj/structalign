@@ -16,12 +16,12 @@ tasks:
   build:
     desc: "Build the binary into ./structalign"
     cmds:
-      - go build -o structalign ./cmd/structalign
+      - go build -o structalign .
 
   install:
     desc: "Install the binary into $GOBIN / $GOPATH/bin"
     cmds:
-      - go install ./cmd/structalign
+      - go install .
 
   test:
     desc: "Run tests via gotestsum (pass flags after --, e.g. -- -update)"
@@ -68,9 +68,9 @@ tasks:
   smoke:
     desc: "Exercise both modes against the bundled sample"
     cmds:
-      - go run ./cmd/structalign -inspect ./_example
+      - go run . -inspect ./_example
       - |
-        if go run ./cmd/structalign ./_example; then
+        if go run . ./_example; then
           echo "expected non-zero exit when reorderings are found"; exit 1
         fi
 

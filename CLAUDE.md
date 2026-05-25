@@ -11,7 +11,7 @@ mode that prints a struct's memory layout (offset/size/align/padding per field).
 
 The program is split into small, decoupled packages:
 
-- `cmd/structalign/main.go` — a thin entrypoint: `os.Exit(app.New(os.Stdout, os.Stderr).Run(os.Args[1:]))`.
+- `main.go` (module root) — a thin entrypoint: `os.Exit(app.New(os.Stdout, os.Stderr).Run(os.Args[1:]))`.
 - `pkg/common` — the public **contracts**: data types (`Target`, `Finding`,
   `Layout`, `LayoutField`, `DiffStyle`) and interfaces (`Loader`, `Aligner`,
   `Inspector`, `Sizes`). Kept out of `internal/` so mockery can generate mocks
@@ -25,8 +25,9 @@ The program is split into small, decoupled packages:
 
 `_example/types.go` is sample input used for manual testing; the leading
 underscore makes the Go tool skip the directory, so it never enters `./...`.
-The module path is `github.com/peczenyj/structalign`, so the install target is
-`github.com/peczenyj/structalign/cmd/structalign@latest` → binary `structalign`.
+The module path is `github.com/peczenyj/structalign`, and `main` is at the module
+root, so the install target is `github.com/peczenyj/structalign@latest` → binary
+`structalign`.
 
 ## Commands
 
@@ -41,7 +42,7 @@ task test -- -update       # regenerate golden fixtures (internal/ui/testdata/*.
 task smoke                 # run both modes against ./_example
 task generate              # regenerate mocks (mockery) — runs when .mockery.yaml is present
 task ci                    # full pre-push gate: tidy:check, lint, build, test, smoke
-go run ./cmd/structalign [flags] [packages]   # packages: ./..., import paths, dirs, files
+go run . [flags] [packages]                   # packages: ./..., import paths, dirs, files
 ```
 
 `enumer` and `mockery` are code generators; `DiffStyle` (`pkg/common`) is an

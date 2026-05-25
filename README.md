@@ -28,7 +28,7 @@ layout. The analysis comes straight from the upstream analyzer, so results match
 Install:
 
 ```sh
-go install github.com/peczenyj/structalign/cmd/structalign@latest
+go install github.com/peczenyj/structalign@latest
 ```
 
 Or grab a prebuilt binary for your OS/arch from the
@@ -226,14 +226,14 @@ both linting and formatting); the `Makefile` just delegates to `task`.
 ```sh
 git clone https://github.com/peczenyj/structalign
 cd structalign
-task build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
+task build          # -> ./structalign   (or: go build -o structalign .)
 task ci             # lint, build, test, and a smoke test against ./_example
 task --list         # list all tasks
 ```
 
-`cmd/structalign/main.go` is a thin entrypoint; the implementation lives in small
-packages under `pkg/common` (contracts) and `internal/` (loader, align, layout,
-ui, app, …). `_example/` holds sample structs for manual testing — the leading
+`main.go` (at the module root) is a thin entrypoint; the implementation lives in
+small packages under `pkg/common` (contracts) and `internal/` (loader, align,
+layout, ui, app, …). `_example/` holds sample structs for manual testing — the leading
 underscore keeps the Go tool from treating it as a package, so it stays out of
 `go build ./...` and friends.
 

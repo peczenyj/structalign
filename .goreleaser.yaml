@@ -15,7 +15,7 @@ before:
 
 builds:
   - id: structalign
-    main: ./cmd/structalign
+    main: .
     binary: structalign
     env:
       - CGO_ENABLED=0

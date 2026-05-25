@@ -12,17 +12,19 @@ workflow, commit conventions, and the release process.
 
 ## Development workflow
 
-The whole program is a single file, `cmd/structalign/main.go`; `_example/` holds
-sample structs used for manual testing and in the docs.
+`main.go` (module root) is a thin entrypoint; the implementation lives in
+`pkg/common` (contracts) and `internal/` (loader, align, layout, ui, app, …).
+`_example/` holds sample structs used for manual testing and in the docs. The repo
+uses [Task](https://taskfile.dev); the `Makefile` just delegates to `task`.
 
 ```sh
-make build          # -> ./structalign
-make check          # gofmt, vet, build, and a smoke test against ./_example  (what CI runs)
-make help           # list all targets
+task build          # -> ./structalign
+task ci             # lint, build, test, and a smoke test against ./_example  (what CI runs)
+task --list         # list all tasks
 ```
 
-Run `make check` before pushing — it mirrors the CI job exactly. CI also runs the
-matrix across Go 1.25.0 and stable.
+Run `task ci` before pushing — it mirrors the CI job. CI also runs the matrix
+across Go 1.25.0 and stable.
 
 When you change diff or inspect output, refresh the README screenshot:
 
