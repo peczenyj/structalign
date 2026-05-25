@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Stop merge commits leaking into the changelog and pin the GitHub remote
+- Stop merge commits leaking into the changelog
 
 ## [0.5.2] - 2026-05-25
 
