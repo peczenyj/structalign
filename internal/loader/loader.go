@@ -14,10 +14,11 @@ import (
 )
 
 // Loader implements common.Loader over go/packages.
-type Loader struct{}
+type Loader struct{ tests bool }
 
-// New returns a Loader.
-func New() *Loader { return &Loader{} }
+// New returns a Loader. When tests is true, _test.go files (and test-variant
+// packages) are loaded too.
+func New(tests bool) *Loader { return &Loader{tests: tests} }
 
 // Load resolves the patterns (./..., import paths, directories, "file=" queries,
 // or bare .go file paths) into typed Targets.
@@ -27,7 +28,7 @@ func (l *Loader) Load(patterns ...string) ([]common.Target, error) {
 			packages.NeedImports | packages.NeedDeps | packages.NeedTypes |
 			packages.NeedTypesSizes | packages.NeedSyntax | packages.NeedTypesInfo,
 		Fset:  token.NewFileSet(),
-		Tests: false,
+		Tests: l.tests,
 	}
 	pkgs, err := packages.Load(cfg, normalizeArgs(patterns)...)
 	if err != nil {

@@ -18,7 +18,7 @@ func TestLoadSingleFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, []byte(src), 0o644))
 
 	// A bare .go path is rewritten to a file= query by normalizeArgs.
-	targets, err := loader.New().Load(file)
+	targets, err := loader.New(false).Load(file)
 	require.NoError(t, err)
 	require.NotEmpty(t, targets)
 
@@ -31,7 +31,7 @@ func TestLoadSingleFile(t *testing.T) {
 func TestLoadReturnsErrorForInvalidQuery(t *testing.T) {
 	// An unrecognized "name=value" query makes go/packages fail at the driver
 	// level (a top-level error, not a per-package one).
-	_, err := loader.New().Load("bogus=x")
+	_, err := loader.New(false).Load("bogus=x")
 	require.Error(t, err)
 }
 
@@ -43,8 +43,48 @@ func TestLoadCapturesPackageErrors(t *testing.T) {
 	file := filepath.Join(dir, "bad.go")
 	require.NoError(t, os.WriteFile(file, []byte(src), 0o644))
 
-	targets, err := loader.New().Load(file)
+	targets, err := loader.New(false).Load(file)
 	require.NoError(t, err)
 	require.NotEmpty(t, targets)
 	assert.NotEmpty(t, targets[0].Errors, "type error should be captured in Target.Errors")
+}
+
+func TestLoadTestsFlag(t *testing.T) {
+	dir := t.TempDir()
+
+	// A go.mod is required so that go/packages can resolve test-variant packages.
+	gomod := "module example.com/sample\n\ngo 1.21\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte(gomod), 0o644))
+
+	mainSrc := "package sample\n\ntype Mixed struct {\n\tA bool\n\tB int64\n\tC bool\n}\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "types.go"), []byte(mainSrc), 0o644))
+
+	testSrc := "package sample\n\ntype InTest struct {\n\tX bool\n\tY int64\n\tZ bool\n}\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "types_test.go"), []byte(testSrc), 0o644))
+
+	// Change into dir so that ./... resolves against the temp module.
+	t.Chdir(dir)
+
+	// With tests=true, InTest defined in the _test.go file should be visible in
+	// the test-augmented package variant (the one with both types.go and types_test.go).
+	targetsWithTests, err := loader.New(true).Load("./...")
+	require.NoError(t, err)
+	require.NotEmpty(t, targetsWithTests)
+	foundInTest := false
+	for _, tgt := range targetsWithTests {
+		if tgt.Types != nil && tgt.Types.Scope().Lookup("InTest") != nil {
+			foundInTest = true
+			break
+		}
+	}
+	assert.True(t, foundInTest, "InTest should be visible when tests=true")
+
+	// With tests=false, InTest should not appear in any target.
+	targetsWithoutTests, err := loader.New(false).Load("./...")
+	require.NoError(t, err)
+	for _, tgt := range targetsWithoutTests {
+		if tgt.Types != nil {
+			assert.Nil(t, tgt.Types.Scope().Lookup("InTest"), "InTest should not be visible when tests=false")
+		}
+	}
 }
