@@ -49,7 +49,7 @@ type Tagged struct {
 
 func TestRenderUnified(t *testing.T) {
 	tgt := testutil.Target(t, sampleSrc)
-	findings, err := align.New().Findings(tgt, []string{"Mixed"}, false)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Mixed"}})
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -60,6 +60,8 @@ func TestRenderUnified(t *testing.T) {
 	assert.Contains(t, out, "+ ")
 	assert.Contains(t, out, "- ")
 	assert.NotContains(t, out, "\x1b[", "color=false output must have no ANSI escapes")
+	assert.Contains(t, out, "type Mixed struct {", "named struct must show 'type <Name> struct {' context line")
+	assert.Contains(t, out, "(33.33% smaller)", "header must include size-reduction percentage")
 }
 
 func TestGoldenRendering(t *testing.T) {
@@ -73,21 +75,21 @@ func TestGoldenRendering(t *testing.T) {
 		render func(p *ui.Printer) int
 	}{
 		{"diff_unified_mixed", "diff_unified_mixed.golden", func(p *ui.Printer) int {
-			f, _ := al.Findings(tgt, []string{"Mixed"}, false)
+			f, _ := al.Findings(tgt, common.Options{Patterns: []string{"Mixed"}})
 			return p.RenderFindings(f, common.DiffUnified)
 		}},
 		{"diff_side_mixed", "diff_side_mixed.golden", func(p *ui.Printer) int {
-			f, _ := al.Findings(tgt, []string{"Mixed"}, false)
+			f, _ := al.Findings(tgt, common.Options{Patterns: []string{"Mixed"}})
 			return p.RenderFindings(f, common.DiffSide)
 		}},
 		{"inspect_mixed", "inspect_mixed.golden", func(p *ui.Printer) int {
-			return p.RenderLayouts(in.Layouts(tgt, []string{"Mixed"}), false, false)
+			return p.RenderLayouts(in.Layouts(tgt, common.Options{Patterns: []string{"Mixed"}}), false, false)
 		}},
 		{"inspect_verbose_mixed", "inspect_verbose_mixed.golden", func(p *ui.Printer) int {
-			return p.RenderLayouts(in.Layouts(tgt, []string{"Mixed"}), true, false)
+			return p.RenderLayouts(in.Layouts(tgt, common.Options{Patterns: []string{"Mixed"}}), true, false)
 		}},
 		{"inspect_tags_tagged", "inspect_tags_tagged.golden", func(p *ui.Printer) int {
-			return p.RenderLayouts(in.Layouts(tgt, []string{"Tagged"}), false, true)
+			return p.RenderLayouts(in.Layouts(tgt, common.Options{Patterns: []string{"Tagged"}}), false, true)
 		}},
 	}
 	for _, tc := range cases {

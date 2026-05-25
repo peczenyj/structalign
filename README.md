@@ -1,13 +1,18 @@
 # structalign
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/peczenyj/structalign.svg)](https://pkg.go.dev/github.com/peczenyj/structalign)
-[![Go Report Card](https://goreportcard.com/badge/github.com/peczenyj/structalign)](https://goreportcard.com/report/github.com/peczenyj/structalign)
+[![tag](https://img.shields.io/github/tag/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases)
+![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.25-%23007d9c)
+[![GoDoc](https://pkg.go.dev/badge/github.com/peczenyj/structalign)](http://pkg.go.dev/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/peczenyj/structalign/graph/badge.svg)](https://codecov.io/gh/peczenyj/structalign)
-[![Latest release](https://img.shields.io/github/v/release/peczenyj/structalign?sort=semver)](https://github.com/peczenyj/structalign/releases/latest)
+[![Report card](https://goreportcard.com/badge/github.com/peczenyj/structalign)](https://goreportcard.com/report/github.com/peczenyj/structalign)
 [![CodeQL](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql)
 [![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/peczenyj/structalign)](./LICENSE)
+[![Latest release](https://img.shields.io/github/release/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
+[![GitHub Release Date](https://img.shields.io/github/release-date/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
+[![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
 [![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
@@ -28,7 +33,7 @@ layout. The analysis comes straight from the upstream analyzer, so results match
 Install:
 
 ```sh
-go install github.com/peczenyj/structalign/cmd/structalign@latest
+go install github.com/peczenyj/structalign@latest
 ```
 
 Or grab a prebuilt binary for your OS/arch from the
@@ -38,19 +43,21 @@ installed version with `structalign -version`.
 Then point it at a file, a package, or any Go package pattern:
 
 ```sh
-structalign ./...            # every package in the module (skips _* and testdata dirs)
+structalign ./...            # every package in the module
 ```
 
 It accepts whatever the `go` tool does — `./...`, import paths, directories, and
-single `.go` files — and you can pass several at once.
+single `.go` files — and you can pass several at once. By default it skips
+**generated files** (`// Code generated … DO NOT EDIT.`) and `_test.go` files; use
+`-generated` / `-tests` to include them (see [Scanning scope](#scanning-scope)).
 
 Pointed at the bundled sample (`./_example`), it reports the reordering and exits
 non-zero so it can gate CI:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16
-  struct {
+_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+  type Mixed struct {
 + 	B int64
   	A bool
 - 	B int64
@@ -88,12 +95,21 @@ structalign [flags] [packages]
   -diff string    diff style: unified | side | none   (default "unified")
   -width int      column width per side for -diff=side (default: auto from terminal)
   -color string   auto | always | never               (default "auto")
-  -type string    only consider named structs matching these comma-separated
-                  glob patterns (e.g. "*Request,Config"); empty means all
   -inspect        inspect layout instead of diffing: print each struct as
                   annotated Go source with size/align/padding comments
   -verbose        in -inspect mode, show padding on its own `_` line
   -tags           preserve struct field tags in output (default: strip them)
+
+  -type string    only consider named structs matching these comma-separated
+                  glob patterns (e.g. "*Request,Config"); empty means all
+  -exclude string exclude packages whose import path matches this regexp
+                  (default "^unsafe$|^builtin$")
+  -generated      also analyze generated files (skipped by default)
+  -tests          also analyze _test.go files (skipped by default)
+  -skip-cache-padded
+                  skip structs with a golang.org/x/sys/cpu.CacheLinePad field
+
+  -version        print version and exit
 ```
 
 Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
@@ -107,8 +123,8 @@ Unified diff:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16
-  struct {
+_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+  type Mixed struct {
 + 	B int64
   	A bool
 - 	B int64
@@ -120,10 +136,10 @@ Side-by-side:
 
 ```
 $ structalign -diff=side -width=28 -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16
+_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
-  struct {                     │ struct {
+  type Mixed struct {          │ type Mixed struct {
                                │     B int64
       A bool                   │     A bool
       B int64                  │
@@ -168,6 +184,10 @@ target sizes (your host `GOOS`/`GOARCH` by default). This is similar to
 `honnef.co/go/tools/cmd/structlayout`, but stays inside
 this one tool and honors the same `-type` filter.
 
+**Generic types are skipped in inspect mode** — a struct with type-parameter
+fields (`type Box[T any] struct{ … }`) has no concrete layout until it's
+instantiated, so there is nothing to measure.
+
 ### Filtering by type name
 
 `-type` takes a comma-separated list of glob patterns (`path.Match` syntax: `*`,
@@ -180,6 +200,27 @@ structalign -type='*Request' ./...          # only structs ending in Request
 structalign -type='Record,Config' ./pkg     # exact names
 structalign -inspect -type='*ID*' ./pkg     # inspect just ID-related structs
 ```
+
+### Scanning scope
+
+By default structalign analyzes the regular, hand-written source of each package.
+A few flags adjust what's in scope:
+
+```sh
+structalign -generated ./...                 # include generated files (skipped by default)
+structalign -tests ./...                     # include _test.go files (skipped by default)
+structalign -exclude='/internal/' ./...      # drop packages whose import path matches the regexp
+structalign -skip-cache-padded ./...         # skip structs guarded by cpu.CacheLinePad
+```
+
+- **Generated files** (`// Code generated … DO NOT EDIT.`) are skipped by default —
+  you usually can't hand-edit them, so a reorder suggestion would be noise.
+- **`_test.go` files** are skipped by default; `-tests` includes them.
+- **`-exclude`** takes a regexp matched against the *import path* (default
+  `^unsafe$|^builtin$`); it complements `-type`, which matches struct names.
+- **`-skip-cache-padded`** leaves structs with a
+  [`cpu.CacheLinePad`](https://pkg.go.dev/golang.org/x/sys/cpu#CacheLinePad) field
+  alone, since reordering would move the pad and defeat its false-sharing guard.
 
 ### Field tags
 
@@ -226,26 +267,30 @@ both linting and formatting); the `Makefile` just delegates to `task`.
 ```sh
 git clone https://github.com/peczenyj/structalign
 cd structalign
-task build          # -> ./structalign   (or: go build -o structalign ./cmd/structalign)
+task build          # -> ./structalign   (or: go build -o structalign .)
 task ci             # lint, build, test, and a smoke test against ./_example
 task --list         # list all tasks
 ```
 
-`cmd/structalign/main.go` is a thin entrypoint; the implementation lives in small
-packages under `pkg/common` (contracts) and `internal/` (loader, align, layout,
-ui, app, …). `_example/` holds sample structs for manual testing — the leading
+`main.go` (at the module root) is a thin entrypoint; the implementation lives in
+small packages under `pkg/common` (contracts) and `internal/` (loader, align,
+layout, ui, app, …). `_example/` holds sample structs for manual testing — the leading
 underscore keeps the Go tool from treating it as a package, so it stays out of
 `go build ./...` and friends.
 
 ## Caveats inherited from fieldalignment
 
 - The most compact order is not always the most efficient — packing fields tightly
-  can occasionally induce false sharing between goroutines.
+  can occasionally induce false sharing between goroutines. For deliberately
+  cache-line-padded structs, use `-skip-cache-padded`.
 - Reordering can hurt logical grouping/readability; treat the output as advice,
   most valuable for hot, frequently-allocated structs.
 - Sizes are computed for the toolchain's target (your host `GOOS`/`GOARCH` by
   default). To analyze another target, set them in the environment, e.g.
   `GOARCH=386 structalign ./...`.
+- For **generic** structs the diff is computed from the type parameters' assumed
+  (constraint) sizes, so the suggested order may not be optimal for every
+  instantiation; inspect mode skips generics entirely.
 
 ## Design notes
 

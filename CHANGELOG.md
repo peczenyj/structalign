@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-25
+
+### Added
+
+- *(common)* Add Options and Finding size fields; Aligner/Inspector take Options
+- *(structfilter)* Detect generated files and cache-line padding
+- *(align)* Skip generated/cache-padded structs; capture sizes
+- *(layout)* Skip generated/cache-padded structs
+- *(loader)* Add -tests support (load _test.go files)
+- *(app)* Wire -generated/-tests/-skip-cache-padded and -exclude package filter
+- *(ui)* Show "type <Name> struct {" and the size-reduction percentage
+
+### Changed
+
+- Merge tag 'v0.3.0' into devel
+- Move main to the module root
+- Merge pull request #14 from peczenyj/feature/v0.4.0-filters-and-display
+- Merge pull request #15 from peczenyj/feature/v0.4.0-docs
+
+### Documentation
+
+- Regenerate diff.png for v0.4.0 output
+- Normalize badges, add .github templates and AGENTS.md
+- Refresh README/AGENTS for v0.4.0; render generic type params in the diff
+
 ## [0.3.0] - 2026-05-25
 
 ### Added
@@ -34,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wire app package; reduce main.go to an entrypoint
 - Merge pull request #12 from peczenyj/feature/v0.3.0-decoupling
 - Merge pull request #13 from peczenyj/feature/v0.3.0-followup
+- Merge branch 'release/v0.3.0'
 
 ### Documentation
 
@@ -84,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.4.0]: https://github.com///compare/v0.3.0..v0.4.0
 [0.3.0]: https://github.com///compare/v0.2.0..v0.3.0
 [0.2.0]: https://github.com///compare/v0.1.0..v0.2.0
 [0.1.0]: https://github.com///tree/v0.1.0

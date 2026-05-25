@@ -12,17 +12,19 @@ workflow, commit conventions, and the release process.
 
 ## Development workflow
 
-The whole program is a single file, `cmd/structalign/main.go`; `_example/` holds
-sample structs used for manual testing and in the docs.
+`main.go` (module root) is a thin entrypoint; the implementation lives in
+`pkg/common` (contracts) and `internal/` (loader, align, layout, ui, app, …).
+`_example/` holds sample structs used for manual testing and in the docs. The repo
+uses [Task](https://taskfile.dev); the `Makefile` just delegates to `task`.
 
 ```sh
-make build          # -> ./structalign
-make check          # gofmt, vet, build, and a smoke test against ./_example  (what CI runs)
-make help           # list all targets
+task build          # -> ./structalign
+task ci             # lint, build, test, and a smoke test against ./_example  (what CI runs)
+task --list         # list all tasks
 ```
 
-Run `make check` before pushing — it mirrors the CI job exactly. CI also runs the
-matrix across Go 1.25.0 and stable.
+Run `task ci` before pushing — it mirrors the CI job. CI also runs the matrix
+across Go 1.25.0 and stable.
 
 When you change diff or inspect output, refresh the README screenshot:
 
@@ -47,6 +49,17 @@ is what drives the changelog, so the prefix matters:
 | `chore:` / `ci:` / `build:` / `test:` | (excluded — not user-facing) |
 
 Mark breaking changes with a `!` (e.g. `feat!:`) or a `BREAKING CHANGE:` footer.
+
+## Pull Request Process
+
+1. Branch off `devel` (e.g. `feature/<topic>`); never target `main` directly.
+2. Make your change **with tests**, and run `task ci` until it's green.
+3. Use [Conventional Commits](https://www.conventionalcommits.org) (see above) so
+   the changelog stays accurate.
+4. Open the PR against `devel` and fill in the pull-request template. Keep it
+   focused — one logical change per PR.
+5. CI (lint, build + test across the Go matrix, CodeQL, dependency review) must
+   pass; a maintainer then reviews and merges.
 
 ## Branching (git-flow)
 

@@ -20,17 +20,17 @@ func (_m *Inspector) EXPECT() *Inspector_Expecter {
 	return &Inspector_Expecter{mock: &_m.Mock}
 }
 
-// Layouts provides a mock function with given fields: t, patterns
-func (_m *Inspector) Layouts(t common.Target, patterns []string) []common.Layout {
-	ret := _m.Called(t, patterns)
+// Layouts provides a mock function with given fields: t, opts
+func (_m *Inspector) Layouts(t common.Target, opts common.Options) []common.Layout {
+	ret := _m.Called(t, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Layouts")
 	}
 
 	var r0 []common.Layout
-	if rf, ok := ret.Get(0).(func(common.Target, []string) []common.Layout); ok {
-		r0 = rf(t, patterns)
+	if rf, ok := ret.Get(0).(func(common.Target, common.Options) []common.Layout); ok {
+		r0 = rf(t, opts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]common.Layout)
@@ -47,14 +47,14 @@ type Inspector_Layouts_Call struct {
 
 // Layouts is a helper method to define mock.On call
 //   - t common.Target
-//   - patterns []string
-func (_e *Inspector_Expecter) Layouts(t interface{}, patterns interface{}) *Inspector_Layouts_Call {
-	return &Inspector_Layouts_Call{Call: _e.mock.On("Layouts", t, patterns)}
+//   - opts common.Options
+func (_e *Inspector_Expecter) Layouts(t interface{}, opts interface{}) *Inspector_Layouts_Call {
+	return &Inspector_Layouts_Call{Call: _e.mock.On("Layouts", t, opts)}
 }
 
-func (_c *Inspector_Layouts_Call) Run(run func(t common.Target, patterns []string)) *Inspector_Layouts_Call {
+func (_c *Inspector_Layouts_Call) Run(run func(t common.Target, opts common.Options)) *Inspector_Layouts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(common.Target), args[1].([]string))
+		run(args[0].(common.Target), args[1].(common.Options))
 	})
 	return _c
 }
@@ -64,7 +64,7 @@ func (_c *Inspector_Layouts_Call) Return(_a0 []common.Layout) *Inspector_Layouts
 	return _c
 }
 
-func (_c *Inspector_Layouts_Call) RunAndReturn(run func(common.Target, []string) []common.Layout) *Inspector_Layouts_Call {
+func (_c *Inspector_Layouts_Call) RunAndReturn(run func(common.Target, common.Options) []common.Layout) *Inspector_Layouts_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/peczenyj/structalign/internal/match"
+	"github.com/peczenyj/structalign/internal/structfilter"
 	"github.com/peczenyj/structalign/pkg/common"
 )
 
@@ -16,10 +17,10 @@ type Inspector struct{}
 // New returns an Inspector.
 func New() *Inspector { return &Inspector{} }
 
-// Layouts returns the layout of each named struct in t matching patterns
-// (nil = all). Generic types (no concrete layout until instantiated) are
-// skipped.
-func (i *Inspector) Layouts(t common.Target, patterns []string) []common.Layout {
+// Layouts returns the layout of each named struct in t controlled by opts
+// (nil patterns = all). Generic types (no concrete layout until instantiated)
+// are skipped.
+func (i *Inspector) Layouts(t common.Target, opts common.Options) []common.Layout {
 	if t.Types == nil || t.Sizes == nil {
 		return nil
 	}
@@ -29,7 +30,7 @@ func (i *Inspector) Layouts(t common.Target, patterns []string) []common.Layout 
 
 	var out []common.Layout
 	for _, n := range names {
-		if len(patterns) > 0 && !match.MatchAny(patterns, n) {
+		if len(opts.Patterns) > 0 && !match.MatchAny(opts.Patterns, n) {
 			continue
 		}
 		tn, ok := scope.Lookup(n).(*types.TypeName)
@@ -41,6 +42,12 @@ func (i *Inspector) Layouts(t common.Target, patterns []string) []common.Layout 
 		}
 		st, ok := tn.Type().Underlying().(*types.Struct)
 		if !ok {
+			continue
+		}
+		if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, tn.Pos()) {
+			continue
+		}
+		if opts.SkipCachePadded && structfilter.HasCacheLinePad(st) {
 			continue
 		}
 		out = append(out, computeLayout(n, st, t.Sizes))

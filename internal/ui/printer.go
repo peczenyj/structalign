@@ -55,6 +55,10 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 	} else {
 		header = fmt.Sprintf("%s:%d:%d: %s", file, loc.Line, loc.Column, f.Message)
 	}
+	if f.OldSize > 0 && f.NewSize > 0 && f.NewSize < f.OldSize {
+		pct := float64(f.OldSize-f.NewSize) / float64(f.OldSize) * 100
+		header += fmt.Sprintf(" (%02.2f%% smaller)", pct)
+	}
 	fmt.Fprintln(p.Out, paint(p.Color, cBold+cCyan, header)) //nolint:errcheck
 
 	if f.Original == "" || f.Proposed == "" {
@@ -63,14 +67,19 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 		return
 	}
 
+	// Name plus any generic type parameters, e.g. "Generic[T]".
+	decl := f.Name + f.TypeParams
+	orig := withTypeName(f.Original, decl)
+	prop := withTypeName(f.Proposed, decl)
+
 	switch style {
 	case common.DiffNone:
 		// just the proposed struct
-		fmt.Fprintln(p.Out, indent(f.Proposed, "  ")) //nolint:errcheck
+		fmt.Fprintln(p.Out, indent(prop, "  ")) //nolint:errcheck
 	case common.DiffSide:
-		p.renderSideBySide(f.Original, f.Proposed)
+		p.renderSideBySide(orig, prop)
 	default: // unified
-		p.renderUnified(f.Original, f.Proposed)
+		p.renderUnified(orig, prop)
 	}
 	fmt.Fprintln(p.Out) //nolint:errcheck
 }
@@ -218,6 +227,25 @@ func indent(s, pad string) string {
 		lines[i] = pad + l
 	}
 	return strings.Join(lines, "\n")
+}
+
+// withTypeName rewrites a leading "struct {" line into "type <name> struct {"
+// so the rendered diff reads as a full type declaration. Only the first line is
+// touched (nested "struct {" fields are left alone). A no-op when name == "" or
+// the text doesn't begin with a struct line.
+func withTypeName(src, name string) string {
+	if name == "" {
+		return src
+	}
+	first, rest, _ := strings.Cut(src, "\n")
+	if !strings.HasPrefix(first, "struct {") {
+		return src
+	}
+	first = "type " + name + " " + first
+	if rest == "" {
+		return first
+	}
+	return first + "\n" + rest
 }
 
 func truncPad(s string, w int) string {
