@@ -5,6 +5,7 @@ package layout
 import (
 	"go/types"
 	"sort"
+	"strings"
 
 	"github.com/peczenyj/structalign/internal/match"
 	"github.com/peczenyj/structalign/internal/structfilter"
@@ -18,8 +19,10 @@ type Inspector struct{}
 func New() *Inspector { return &Inspector{} }
 
 // Layouts returns the layout of each named struct in t controlled by opts
-// (nil patterns = all). Generic types (no concrete layout until instantiated)
-// are skipped.
+// (nil patterns = all). A generic type has no concrete layout until it is
+// instantiated, so it is measured with each type parameter replaced by a
+// representative type (its constraint's core type, else interface{}) and the
+// returned Layout carries a Note disclaiming the approximation.
 func (i *Inspector) Layouts(t common.Target, opts common.Options) []common.Layout {
 	if t.Types == nil || t.Sizes == nil {
 		return nil
@@ -37,12 +40,10 @@ func (i *Inspector) Layouts(t common.Target, opts common.Options) []common.Layou
 		if !ok {
 			continue
 		}
-		if named, ok := tn.Type().(*types.Named); ok && named.TypeParams().Len() > 0 {
-			continue // generic: no concrete layout until instantiated
-		}
-		st, ok := tn.Type().Underlying().(*types.Struct)
-		if !ok {
-			continue
+		named, _ := tn.Type().(*types.Named)
+		st, typeParams, note := resolveStruct(named, tn.Type())
+		if st == nil {
+			continue // not a struct, or a generic we couldn't instantiate
 		}
 		if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, tn.Pos()) {
 			continue
@@ -50,9 +51,62 @@ func (i *Inspector) Layouts(t common.Target, opts common.Options) []common.Layou
 		if opts.SkipCachePadded && structfilter.HasCacheLinePad(st) {
 			continue
 		}
-		out = append(out, computeLayout(n, st, t.Sizes))
+		l := computeLayout(n, st, t.Sizes)
+		l.TypeParams = typeParams
+		l.Note = note
+		out = append(out, l)
 	}
 	return out
+}
+
+// resolveStruct returns the struct to measure for a named type, plus (for a
+// generic type) its type-parameter names and a disclaimer note. A generic type
+// is instantiated with a representative type per parameter so it has a concrete
+// layout. Returns a nil struct when typ is not a struct or cannot be instantiated.
+func resolveStruct(named *types.Named, typ types.Type) (st *types.Struct, typeParams, note string) {
+	if named == nil || named.TypeParams().Len() == 0 {
+		st, _ = typ.Underlying().(*types.Struct)
+		return st, "", ""
+	}
+	tps := named.TypeParams()
+	args := make([]types.Type, tps.Len())
+	pnames := make([]string, tps.Len())
+	assumed := make([]string, tps.Len())
+	for i := range tps.Len() {
+		rep := representativeType(tps.At(i))
+		args[i] = rep
+		pnames[i] = tps.At(i).Obj().Name()
+		assumed[i] = tps.At(i).Obj().Name() + "=" + types.TypeString(rep, nil)
+	}
+	inst, err := types.Instantiate(nil, named.Origin(), args, false)
+	if err != nil {
+		return nil, "", ""
+	}
+	st, ok := inst.Underlying().(*types.Struct)
+	if !ok {
+		return nil, "", ""
+	}
+	typeParams = "[" + strings.Join(pnames, ", ") + "]"
+	note = "generic type — layout assumes " + strings.Join(assumed, ", ") +
+		"; the real layout depends on the type argument(s)"
+	return st, typeParams, note
+}
+
+// representativeType picks a concrete stand-in for a type parameter: its
+// constraint's single core type (e.g. int for `~int`), or interface{} when the
+// constraint has no single core type (e.g. `any`, `comparable`, unions).
+func representativeType(tp *types.TypeParam) types.Type {
+	anyType := types.Universe.Lookup("any").Type()
+	c, ok := tp.Constraint().Underlying().(*types.Interface)
+	if !ok {
+		return anyType
+	}
+	if c.NumEmbeddeds() == 1 {
+		if u, ok := c.EmbeddedType(0).(*types.Union); ok && u.Len() == 1 {
+			return u.Term(0).Type()
+		}
+	}
+	return anyType
 }
 
 func computeLayout(name string, st *types.Struct, s common.Sizes) common.Layout {

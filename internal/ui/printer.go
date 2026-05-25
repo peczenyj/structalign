@@ -194,9 +194,14 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 	}
 	// In verbose mode a lone "_" can also appear; it's never wider than a field.
 
+	// Optional caveat (e.g. the generic-type disclaimer) above the declaration.
+	if l.Note != "" {
+		fmt.Fprintln(p.Out, paint(p.Color, cDim, "// "+l.Note)) //nolint:errcheck
+	}
+
 	// Header: the struct opening line carries size/align/padding.
-	header := fmt.Sprintf("type %s struct { // size: %d, align: %d, padding: %d",
-		l.Name, l.Total, l.Align, l.Padding)
+	header := fmt.Sprintf("type %s%s struct { // size: %d, align: %d, padding: %d",
+		l.Name, l.TypeParams, l.Total, l.Align, l.Padding)
 	fmt.Fprintln(p.Out, paint(p.Color, cBold+cCyan, header)) //nolint:errcheck
 
 	for i, f := range l.Fields {

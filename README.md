@@ -184,9 +184,26 @@ target sizes (your host `GOOS`/`GOARCH` by default). This is similar to
 `honnef.co/go/tools/cmd/structlayout`, but stays inside
 this one tool and honors the same `-type` filter.
 
-**Generic types are skipped in inspect mode** — a struct with type-parameter
-fields (`type Box[T any] struct{ … }`) has no concrete layout until it's
-instantiated, so there is nothing to measure.
+#### Inspecting generic types
+
+A generic struct has **no single layout** — `type Box[T any] struct{ … }` is laid
+out differently for every type argument (`Box[bool]` and `Box[[64]byte]` share
+nothing), so there is no concrete type to measure. Inspect therefore shows a
+**best-effort approximation**: each type parameter is replaced by a representative
+type — its constraint's core type (e.g. `~int` → `int`), or `interface{}` when the
+constraint is unbounded (`any`, `comparable`, unions) — and the output is prefixed
+with a disclaimer. Treat the numbers as indicative only; the real layout depends on
+how the type is instantiated.
+
+```
+$ structalign -inspect -type=Generic ./_example
+// generic type — layout assumes T=any; the real layout depends on the type argument(s)
+type Generic[T] struct { // size: 32, align: 8, padding: 11
+	Flag bool    // size:  1, align: 1, padding: 7
+	Value any    // size: 16, align: 8
+	Count uint32 // size:  4, align: 4, padding: 4
+}
+```
 
 ### Filtering by type name
 
@@ -288,9 +305,10 @@ underscore keeps the Go tool from treating it as a package, so it stays out of
 - Sizes are computed for the toolchain's target (your host `GOOS`/`GOARCH` by
   default). To analyze another target, set them in the environment, e.g.
   `GOARCH=386 structalign ./...`.
-- For **generic** structs the diff is computed from the type parameters' assumed
-  (constraint) sizes, so the suggested order may not be optimal for every
-  instantiation; inspect mode skips generics entirely.
+- For **generic** structs both modes work from the type parameters' assumed
+  (constraint) sizes, so the result may not match a particular instantiation —
+  diff may suggest a non-optimal order, and inspect's numbers are approximate (it
+  prints a disclaimer; see [Inspecting generic types](#inspecting-generic-types)).
 
 ## Design notes
 
