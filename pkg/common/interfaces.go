@@ -19,15 +19,14 @@ type Loader interface {
 	Load(patterns ...string) ([]Target, error)
 }
 
-// Aligner produces the struct-reordering findings for one Target. patterns is
-// a set of glob patterns matched against named-type names (nil = all). When
-// keepTags is false, field tags are stripped from the rendered struct text.
+// Aligner produces the struct-reordering findings for one Target, controlled
+// by opts.
 type Aligner interface {
-	Findings(t Target, patterns []string, keepTags bool) ([]Finding, error)
+	Findings(t Target, opts Options) ([]Finding, error)
 }
 
 // Inspector computes the memory layout of each named struct in a Target,
-// filtered by the same glob patterns as Aligner (nil = all).
+// controlled by opts.
 type Inspector interface {
-	Layouts(t Target, patterns []string) []Layout
+	Layouts(t Target, opts Options) []Layout
 }

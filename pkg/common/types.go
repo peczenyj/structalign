@@ -30,6 +30,8 @@ type Finding struct {
 	Message  string // analyzer diagnostic (carries the size info)
 	Original string // current struct source ("struct{...}")
 	Proposed string // reordered struct from the analyzer's SuggestedFix
+	OldSize  int64  // current struct size from the analyzer message (0 if unknown)
+	NewSize  int64  // proposed (optimal) size from the analyzer message (0 if unknown)
 }
 
 // LayoutField is one field's place in a struct's memory layout.
