@@ -1,8 +1,0 @@
-type Tagged struct { // size: 48, align: 8, padding: 18
-	Flag bool `json:"flag"`       // size:  1, align: 1, padding: 7
-	ID string `json:"id" db:"id"` // size: 16, align: 8
-	Count uint32 `json:"count"`   // size:  4, align: 4, padding: 4
-	Ptr *uint64                   // size:  8, align: 8
-	Enabled bool `json:"enabled"` // size:  1, align: 1, padding: 7
-}
-
