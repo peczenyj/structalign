@@ -44,5 +44,6 @@ func Target(tb testing.TB, src string) common.Target {
 		Types:     pkg,
 		TypesInfo: info,
 		Sizes:     sizes.ForArch("amd64"),
+		Sources:   map[string][]byte{"src.go": []byte(src)},
 	}
 }
