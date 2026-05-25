@@ -1,0 +1,14 @@
+# mockery v2 config. Generates mocks for the public contracts in pkg/common into
+# a single test-only package internal/mocks. Run via `task generate`.
+quiet: false
+with-expecter: true
+dir: "internal/mocks"
+mockname: "{{.InterfaceName}}"
+outpkg: "mocks"
+filename: "{{.InterfaceName}}.go"
+packages:
+  github.com/peczenyj/structalign/pkg/common:
+    interfaces:
+      Loader:
+      Aligner:
+      Inspector:
