@@ -98,6 +98,19 @@ func (a *App) Run(args []string) int {
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
 		fs.PrintDefaults()
 	}
+	// Easter egg: fieldalignment has -fix; structalign deliberately only prints
+	// suggestions and never edits files. Caught before parsing, so -fix is never
+	// a registered flag and stays invisible in -help.
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == "-fix" || arg == "--fix" {
+			fmt.Fprintln(a.Stderr, "structalign: sorry, I don't do -fix — I only print the reordering, never touch your files.")
+			fmt.Fprintln(a.Stderr, "For an in-place rewrite, use fieldalignment -fix.")
+			return 2
+		}
+	}
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
