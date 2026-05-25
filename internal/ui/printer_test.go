@@ -60,6 +60,8 @@ func TestRenderUnified(t *testing.T) {
 	assert.Contains(t, out, "+ ")
 	assert.Contains(t, out, "- ")
 	assert.NotContains(t, out, "\x1b[", "color=false output must have no ANSI escapes")
+	assert.Contains(t, out, "type Mixed struct {", "named struct must show 'type <Name> struct {' context line")
+	assert.Contains(t, out, "(33.33% smaller)", "header must include size-reduction percentage")
 }
 
 func TestGoldenRendering(t *testing.T) {

@@ -1,5 +1,5 @@
-src.go:3:12: Mixed: struct of size 24 could be 16
-  struct {
+src.go:3:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+  type Mixed struct {
 + 	B int64
   	A bool
 - 	B int64
