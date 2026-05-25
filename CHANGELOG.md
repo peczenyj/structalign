@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-05-25
+
+### Added
+
+- *(ui)* Honor the NO_COLOR environment variable
+
+### Changed
+
+- Merge tag 'v0.5.0' into devel
+- Merge pull request #21 from peczenyj/feature/no-color
+
 ## [0.5.0] - 2026-05-25
 
 ### Added
@@ -20,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Merge pull request #17 from peczenyj/feature/inspect-generics
 - Merge pull request #18 from peczenyj/feature/fix-easter-egg
 - Merge pull request #19 from peczenyj/docs/task-commands
+- Merge branch 'release/v0.5.0'
 
 ### Fixed
 
@@ -135,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.5.1]: https://github.com///compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com///compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com///compare/v0.3.0..v0.4.0
 [0.3.0]: https://github.com///compare/v0.2.0..v0.3.0

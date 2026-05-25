@@ -148,5 +148,6 @@ to swap it back for the internal package — it won't compile from this module.
 - **`DiffStyle` is an enumer-generated `uint8` enum** that implements `flag.Value`
   (the `-diff` flag binds via `flag.Var`). Change the constants in
   `pkg/common/diffstyle.go`, then `go generate ./pkg/common`.
-- Color/width live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY) and
+- Color/width live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY and
+  `NO_COLOR` is unset; `-color=always` overrides `NO_COLOR`, per no-color.org) and
   `ui.ResolveWidth(out)` (side-by-side column width from the terminal size).
