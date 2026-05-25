@@ -36,6 +36,12 @@ jobs:
         with:
           version: v2.12.2
 
+      - name: Install go-consistent
+        run: go install github.com/quasilyte/go-consistent@latest
+
+      - name: Consistency check
+        run: task consistent
+
       - name: Build
         run: go build ./...
 
