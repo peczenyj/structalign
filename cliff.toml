@@ -60,7 +60,7 @@ trim = true
 # deterministic. Auto-detection from the origin URL can fail transiently
 # (e.g. a remote/API lookup hiccup during `task release`), which renders the
 # owner/repo as empty and produces broken `https://github.com///compare/...`
-# links — exactly what happened to the v0.5.0..v0.5.2 entries.
+# links.
 [remote.github]
 owner = "peczenyj"
 repo = "structalign"
@@ -73,6 +73,8 @@ filter_commits = false
 topo_order = false
 sort_commits = "oldest"
 commit_parsers = [
+    # Drop merge commits so they never leak into the changelog.
+    { message = "^Merge", skip = true },
     # --- Conventional Commit types (preferred) ---
     { message = "^feat", group = "<!-- 0 -->Added" },
     { message = "^perf", group = "<!-- 1 -->Changed" },
