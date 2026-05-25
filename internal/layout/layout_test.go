@@ -8,6 +8,7 @@ import (
 
 	"github.com/peczenyj/structalign/internal/layout"
 	"github.com/peczenyj/structalign/internal/testutil"
+	"github.com/peczenyj/structalign/pkg/common"
 )
 
 const src = `package sample
@@ -21,7 +22,7 @@ type Mixed struct {
 
 func TestLayoutsComputesPadding(t *testing.T) {
 	tgt := testutil.Target(t, src)
-	got := layout.New().Layouts(tgt, []string{"Mixed"})
+	got := layout.New().Layouts(tgt, common.Options{Patterns: []string{"Mixed"}})
 	require.Len(t, got, 1)
 
 	l := got[0]
