@@ -131,3 +131,17 @@ func TestLayoutsGenericNamedConstraint(t *testing.T) {
 	assert.Equal(t, int64(8), l.Fields[0].Size, "T should resolve to int (8 bytes), not any (16 bytes)")
 	assert.Equal(t, "T=int", l.Fields[0].Assume)
 }
+
+func TestLayoutsGenericConstraintUnionMulti(t *testing.T) {
+	// A constraint with a union of multiple types (e.g. ~int | ~string) has no
+	// single core type, so it should default to any.
+	src := "package sample\n\ntype Box[T ~int | ~string] struct {\n\tValue T\n}\n"
+	tgt := testutil.Target(t, src)
+
+	got := layout.New().Layouts(tgt, common.Options{Patterns: []string{"Box"}})
+	require.Len(t, got, 1)
+
+	l := got[0]
+	assert.Equal(t, int64(16), l.Fields[0].Size, "T should default to any (16 bytes) because it has no single core type")
+	assert.Equal(t, "T=any", l.Fields[0].Assume)
+}
