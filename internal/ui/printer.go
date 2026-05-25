@@ -67,8 +67,10 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 		return
 	}
 
-	orig := withTypeName(f.Original, f.Name)
-	prop := withTypeName(f.Proposed, f.Name)
+	// Name plus any generic type parameters, e.g. "Generic[T]".
+	decl := f.Name + f.TypeParams
+	orig := withTypeName(f.Original, decl)
+	prop := withTypeName(f.Proposed, decl)
 
 	switch style {
 	case common.DiffNone:

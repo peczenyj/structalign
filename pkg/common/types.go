@@ -24,14 +24,15 @@ type Target struct {
 
 // Finding is one struct whose fields could be reordered to use less memory.
 type Finding struct {
-	Fset     *token.FileSet
-	Pos      token.Pos
-	Name     string // enclosing named type, or "" for an anonymous struct
-	Message  string // analyzer diagnostic (carries the size info)
-	Original string // current struct source ("struct{...}")
-	Proposed string // reordered struct from the analyzer's SuggestedFix
-	OldSize  int64  // current struct size from the analyzer message (0 if unknown)
-	NewSize  int64  // proposed (optimal) size from the analyzer message (0 if unknown)
+	Fset       *token.FileSet
+	Pos        token.Pos
+	Name       string // enclosing named type, or "" for an anonymous struct
+	TypeParams string // type-parameter names for a generic type, e.g. "[T]" (else "")
+	Message    string // analyzer diagnostic (carries the size info)
+	Original   string // current struct source ("struct{...}")
+	Proposed   string // reordered struct from the analyzer's SuggestedFix
+	OldSize    int64  // current struct size from the analyzer message (0 if unknown)
+	NewSize    int64  // proposed (optimal) size from the analyzer message (0 if unknown)
 }
 
 // LayoutField is one field's place in a struct's memory layout.
