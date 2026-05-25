@@ -52,7 +52,7 @@ func (a *Aligner) Findings(t common.Target, patterns []string, keepTags bool) ([
 				e := d.SuggestedFixes[0].TextEdits[0]
 				f.Pos = e.Pos
 				f.Proposed = string(e.NewText)
-				f.Original = readSource(t.Fset, e.Pos, e.End, t.Sources)
+				f.Original = readSource(t.Fset, e.Pos, e.End)
 				if !keepTags {
 					if s, err := stripStructTags(f.Original); err == nil {
 						f.Original = s
@@ -105,25 +105,15 @@ func structNameIndex(files []*ast.File) map[token.Pos]string {
 	return index
 }
 
-// readSource returns the raw source text between two positions. sources is an
-// optional in-memory cache keyed by filename; when provided, it is consulted
-// before falling back to os.ReadFile (useful in tests where files are parsed
-// from in-memory strings that do not exist on disk).
-func readSource(fset *token.FileSet, pos, end token.Pos, sources map[string][]byte) string {
+// readSource returns the raw source text between two positions.
+func readSource(fset *token.FileSet, pos, end token.Pos) string {
 	pf := fset.File(pos)
 	if pf == nil {
 		return ""
 	}
-	var data []byte
-	if sources != nil {
-		data = sources[pf.Name()]
-	}
-	if data == nil {
-		var err error
-		data, err = os.ReadFile(pf.Name())
-		if err != nil {
-			return ""
-		}
+	data, err := os.ReadFile(pf.Name())
+	if err != nil {
+		return ""
 	}
 	start := pf.Offset(pos)
 	stop := pf.Offset(end)

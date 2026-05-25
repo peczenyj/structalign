@@ -20,10 +20,6 @@ type Target struct {
 	TypesInfo *types.Info
 	Sizes     Sizes
 	Errors    []error
-	// Sources optionally provides raw source bytes keyed by filename.
-	// When set, readSource uses it instead of reading from disk (useful in
-	// tests where files are parsed from in-memory strings).
-	Sources map[string][]byte
 }
 
 // Finding is one struct whose fields could be reordered to use less memory.
