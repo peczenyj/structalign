@@ -8,17 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peczenyj/structalign/internal/ui"
+	"github.com/peczenyj/structalign/pkg/common"
 )
 
 func TestWantColor(t *testing.T) {
-	assert.True(t, ui.WantColor("always", os.Stdout))
-	assert.False(t, ui.WantColor("never", os.Stdout))
+	assert.True(t, ui.WantColor(common.ColorizeAlways, os.Stdout))
+	assert.False(t, ui.WantColor(common.ColorizeNever, os.Stdout))
 
-	// "auto" against a pipe (not a terminal) is off.
+	// common.ColorizeAuto against a pipe (not a terminal) is off.
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
 	t.Cleanup(func() { r.Close(); w.Close() })
-	assert.False(t, ui.WantColor("auto", w))
+	assert.False(t, ui.WantColor(common.ColorizeAuto, w))
 }
 
 func TestWantColorStatErrorIsNotATerminal(t *testing.T) {
@@ -27,19 +28,19 @@ func TestWantColorStatErrorIsNotATerminal(t *testing.T) {
 	r.Close()
 	w.Close()
 	// Stat on a closed file errors; auto treats that as "not a terminal".
-	assert.False(t, ui.WantColor("auto", w))
+	assert.False(t, ui.WantColor(common.ColorizeAuto, w))
 }
 
 func TestWantColorHonorsNoColorEnv(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	// -color=always still wins over NO_COLOR (the convention defers to an
 	// explicit color flag); auto stays off.
-	assert.True(t, ui.WantColor("always", os.Stdout), "explicit -color=always overrides NO_COLOR")
+	assert.True(t, ui.WantColor(common.ColorizeAlways, os.Stdout), "explicit -color=always overrides NO_COLOR")
 
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
 	t.Cleanup(func() { r.Close(); w.Close() })
-	assert.False(t, ui.WantColor("auto", w), "auto + NO_COLOR is off")
+	assert.False(t, ui.WantColor(common.ColorizeAuto, w), "auto + NO_COLOR is off")
 }
 
 func TestResolveWidth(t *testing.T) {
