@@ -93,9 +93,9 @@ structalign [flags] [packages]
   packages        Go package patterns: ./..., import paths, directories, or
                   single .go files (defaults the go tool understands)
 
-  -diff string    diff style: unified | side | none   (default "unified")
+  -diff value     diff style: unified|side|none       (default "unified")
   -width int      column width per side for -diff=side (default: auto from terminal)
-  -color string   auto | always | never               (default "auto")
+  -color value    colorize: auto|always|never         (default "auto")
   -inspect        inspect layout instead of diffing: print each struct as
                   annotated Go source with size/align/padding comments
   -verbose        in -inspect mode, show padding on its own `_` line
