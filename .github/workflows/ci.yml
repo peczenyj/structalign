@@ -40,7 +40,16 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: task test
+        run: task test:coverage
+
+      - name: Upload coverage to Codecov
+        if: matrix.go-version == 'stable'
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: peczenyj/structalign
+          files: ./coverage.txt
+          fail_ci_if_error: false
 
       - name: Smoke test
         run: task smoke
