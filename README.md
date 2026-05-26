@@ -127,6 +127,12 @@ In the default `-color=auto`, color is emitted only when stdout is a terminal an
 the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
 
+The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
+`default` (the standard colors), `cga` (a bright 16-color CGA look), or `green` /
+`amber` (single-hue phosphor-monitor emulations). It only affects *which* colors
+are used when color is on; it does not turn color on by itself. An unknown value
+warns and falls back to `default`.
+
 Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
 CI as a check. Inspect mode is informational and always exits 0.
 
