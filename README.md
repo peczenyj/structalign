@@ -101,6 +101,7 @@ structalign [flags] [packages]
   -verbose        in -inspect mode, show padding on its own `_` line
   -tags           preserve struct field tags in output (default: strip them)
   -summary        in diff mode, print a one-line summary after the diffs
+  -sort           in diff mode, present structs largest-first (by bytes saved)
 
   -type string    only consider named structs matching these comma-separated
                   glob patterns (e.g. "*Request,Config"); empty means all
