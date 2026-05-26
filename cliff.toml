@@ -56,6 +56,15 @@ footer = """
 """
 trim = true
 
+# Pin the remote explicitly so the footer's compare/tree links are
+# deterministic. Auto-detection from the origin URL can fail transiently
+# (e.g. a remote/API lookup hiccup during `task release`), which renders the
+# owner/repo as empty and produces broken `https://github.com///compare/...`
+# links.
+[remote.github]
+owner = "peczenyj"
+repo = "structalign"
+
 [git]
 conventional_commits = true
 # Keep non-conventional commits too; the prose fallbacks below route them.
@@ -64,6 +73,8 @@ filter_commits = false
 topo_order = false
 sort_commits = "oldest"
 commit_parsers = [
+    # Drop merge commits so they never leak into the changelog.
+    { message = "^Merge", skip = true },
     # --- Conventional Commit types (preferred) ---
     { message = "^feat", group = "<!-- 0 -->Added" },
     { message = "^perf", group = "<!-- 1 -->Changed" },

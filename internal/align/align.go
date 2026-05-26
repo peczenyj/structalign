@@ -43,6 +43,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		return nil, nil
 	}
 	names := structNameIndex(t.Syntax)
+	nolints := nolintIndex(t.Syntax, t.Fset)
 	insp := inspector.New(t.Syntax)
 
 	var findings []common.Finding
@@ -55,7 +56,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		TypesSizes: t.Sizes, // common.Sizes satisfies types.Sizes
 		ResultOf:   map[*analysis.Analyzer]any{inspect.Analyzer: insp},
 		Report: func(d analysis.Diagnostic) {
-			f := buildFinding(t, d, names, opts)
+			f := buildFinding(t, d, names, nolints, opts)
 			if f == nil {
 				return
 			}
@@ -78,7 +79,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 // buildFinding converts one analyzer diagnostic into a Finding, applying tag
 // stripping and all active filters. Returns nil when the finding should be
 // suppressed.
-func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, opts common.Options) *common.Finding {
+func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
 	f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
 	if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
 		e := d.SuggestedFixes[0].TextEdits[0]
@@ -106,6 +107,11 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 	}
 	if opts.SkipCachePadded && isCachePadded(t, f.Name) {
 		return nil
+	}
+	if opts.RespectNolint {
+		if info, ok := nolints[f.Pos]; ok && info.suppressed(opts.NolintLinters) {
+			return nil
+		}
 	}
 	return &f
 }

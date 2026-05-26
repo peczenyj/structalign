@@ -5,22 +5,24 @@ import (
 	"strconv"
 
 	"golang.org/x/term"
+
+	"github.com/peczenyj/structalign/pkg/common"
 )
 
 // WantColor resolves the -color mode ("auto"|"always"|"never") against out and
 // the environment. In "auto" mode it honors NO_COLOR (https://no-color.org); an
 // explicit -color=always still wins, per that convention.
-func WantColor(mode string, out *os.File) bool {
-	return wantColor(mode, os.Getenv("NO_COLOR") != "", isCharDevice(out))
+func WantColor(colorize common.Colorize, out *os.File) bool {
+	return wantColor(colorize, os.Getenv("NO_COLOR") != "", isCharDevice(out))
 }
 
 // wantColor is the pure decision: "always" forces color on, "never" forces it
 // off, and "auto" emits color only on a terminal and only when NO_COLOR is unset.
-func wantColor(mode string, noColor, isTTY bool) bool {
-	switch mode {
-	case "always":
+func wantColor(colorize common.Colorize, noColor, isTTY bool) bool {
+	switch colorize {
+	case common.ColorizeAlways:
 		return true
-	case "never":
+	case common.ColorizeNever:
 		return false
 	default:
 		return isTTY && !noColor

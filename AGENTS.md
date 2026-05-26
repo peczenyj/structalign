@@ -15,7 +15,7 @@ The program is split into small, decoupled packages:
 
 - `main.go` (module root) — a thin entrypoint: `os.Exit(app.New(os.Stdout, os.Stderr).Run(os.Args[1:]))`.
 - `pkg/common` — the public **contracts**: data types (`Target`, `Finding`,
-  `Layout`, `LayoutField`, `DiffStyle`) and interfaces (`Loader`, `Aligner`,
+  `Layout`, `LayoutField`, `DiffStyle`, `Colorize`) and interfaces (`Loader`, `Aligner`,
   `Inspector`, `Sizes`). Kept out of `internal/` so mockery can generate mocks
   from a non-internal source.
 - `internal/` — the implementations: `loader` (go/packages adapter), `align`
@@ -43,14 +43,14 @@ task lint                  # golangci-lint v2 (lint + formatters: gofumpt/goimpo
 task test                  # gotestsum over all packages
 task test -- -update       # regenerate golden fixtures (internal/ui/testdata/*.golden)
 task smoke                 # run both modes against ./_example
-task generate              # regenerate mocks (mockery) — runs when .mockery.yaml is present
-task ci                    # full pre-push gate: tidy:check, lint, build, test, smoke
+task generate              # regenerate code (go generate) + mocks (mockery); subtasks generate:code / generate:mocks
+task ci                    # full pre-push gate: tidy:check, lint, go-consistent, build, test, smoke
 go run . [flags] [packages]                   # packages: ./..., import paths, dirs, files
 ```
 
-`enumer` and `mockery` are code generators; `DiffStyle` (`pkg/common`) is an
-enumer-generated `uint8` enum (`go generate ./pkg/common` after changing its
-constants), and mocks come from `mockery`. Generated files (`*_enumer.go`,
+`enumer` and `mockery` are code generators; `DiffStyle` and `Colorize`
+(`pkg/common`) are enumer-generated `uint8` enums (`go generate ./pkg/common`
+after changing their constants), and mocks come from `mockery`. Generated files (`*_enumer.go`,
 `internal/mocks/*`) are committed — regenerate, never hand-edit.
 
 Exit code is meaningful: diff modes exit **1** when any reordering is found
@@ -72,10 +72,17 @@ produces. The pipeline, orchestrated by `app.Run`:
    returns `[]common.Finding` — plain data (original + proposed struct text +
    message), not rendered output. **`layout.Layouts`** is the parallel inspect
    path: it reads `Sizes.Offsetsof`/`Sizeof`/`Alignof` to produce `[]common.Layout`.
-3. **`ui.Printer`** renders findings/layouts (unified / side-by-side /
-   proposed-only diff via `textdiff`, or annotated layout) to an `io.Writer`.
-   Because the logic packages return data and `ui` consumes it, rendering is
-   testable by injecting findings — no analyzer, no toolchain.
+3. **`app.Run` collects** all findings (or layouts) across the scanned targets
+   into one slice, then post-processes that slice in `app`: **filter**
+   (`-threshold`, by absolute bytes saved), **sort** (`-sort`, largest-first —
+   findings by savings, layouts by `Layout.Total`), and hand the result to
+   **`ui.Printer`**, which renders (unified / side-by-side / proposed-only diff
+   via `textdiff`, or annotated layout) to an `io.Writer`. With `-summary` (diff
+   only) it then prints a one-line `Summary: N structs affected, M bytes saved total`.
+   The savings metric is the shared `app.savings(common.Finding) int64` helper
+   (used by sort, threshold, and summary). Because the logic packages return data
+   and `ui` consumes it, rendering is testable by injecting findings — no
+   analyzer, no toolchain.
 
 Two **injectable wrappers** are the crux of the decoupling and testability:
 
@@ -119,13 +126,23 @@ to swap it back for the internal package — it won't compile from this module.
   printing in the logic packages, no analysis in `ui`. New output formatting goes
   in `ui`; new analysis/derived fields go on the `common` types.
 - **Scan options travel in `common.Options`** (`Patterns`, `KeepTags`,
-  `IncludeGenerated`, `SkipCachePadded`), passed to `Aligner.Findings` /
-  `Inspector.Layouts`. `align`/`layout` apply the filters via `internal/structfilter`
+  `IncludeGenerated`, `SkipCachePadded`, `RespectNolint`, `NolintLinters`), passed
+  to `Aligner.Findings` / `Inspector.Layouts`. `align`/`layout` apply the filters
+  via `internal/structfilter`
   (`InGeneratedFile` uses `go/ast.IsGenerated`; `HasCacheLinePad` checks for a
   `golang.org/x/sys/cpu.CacheLinePad` field, skipped via `-skip-cache-padded`). **Generated files are skipped by
   default** (`-generated` opts in); `_test.go` is loaded only with `-tests`
   (`loader.New(tests)`); `-exclude` drops packages by import-path regexp in `app`.
   Add a new scan knob to `Options`, not as another positional arg.
+- **`//nolint` is respected by default (diff only).** `align.nolintIndex` maps
+  `StructType.Pos()` to the directive parsed from the type's doc comment
+  (`TypeSpec.Doc` / grouped `GenDecl.Doc`) **and** any comment on the type's
+  opening line (a trailing `type T struct { //nolint`, matched by line since the
+  AST doesn't attach it to `TypeSpec.Comment`). `buildFinding` drops a finding
+  when `Options.RespectNolint` and the directive is bare `//nolint` or names a
+  token in `Options.NolintLinters` (default `["fieldalignment"]`). `app` wires
+  `-show-nolint` (→ `RespectNolint = !showNolint`) and `-nolint-linters`. Inspect
+  ignores `//nolint` (`layout` doesn't read these fields).
 - **Diff presentation extras** live on `common.Finding`: `OldSize`/`NewSize` (parsed
   from the analyzer message) drive the `(NN.NN% smaller)` suffix, and `TypeParams`
   (e.g. `"[T]"`) lets `ui` render `type Name[T] struct {` for generics. Generic
@@ -145,10 +162,23 @@ to swap it back for the internal package — it won't compile from this module.
 - **Tag stripping** (`stripStructTags` in `align`, on by default; `-tags` preserves them) removes diff
   noise from gofmt re-aligning tags when columns shift; best-effort (falls back to
   original on parse error). Tags never affect layout numbers.
-- **`DiffStyle` is an enumer-generated `uint8` enum** that implements `flag.Value`
-  (the `-diff` flag binds via `flag.Var`). Change the constants in
-  `pkg/common/diffstyle.go`, then `go generate ./pkg/common`.
-- Color, width, and padding verbosity live in `ui`: `ui.WantColor(mode, out)` (auto = stdout is a TTY and
+- **`DiffStyle` and `Colorize` are enumer-generated `uint8` enums** that implement
+  `flag.Value` (the `-diff` and `-color` flags bind via `flag.Var`; their `Type()`
+  method feeds the usage strings). Change the constants in
+  `pkg/common/diffstyle.go` / `pkg/common/colorize.go`, then `go generate ./pkg/common`.
+- Color, width, and padding verbosity live in `ui`: `ui.WantColor(colorize, out)` takes a
+  `common.Colorize` (auto = stdout is a TTY and
   `NO_COLOR` is unset; `-color=always` overrides `NO_COLOR`, per no-color.org),
   `ui.ResolveWidth(out)` (side-by-side column width from the terminal size), and
   the `-verbose` flag (whether padding gets its own `_` line in inspect mode).
+- **Themes** route color through `ui.Theme` (semantic roles `Header/Added/Removed/
+  Meta/Padding/Label`); `Printer.Theme` zero value resolves to `ui.DefaultTheme()`,
+  which is **byte-for-byte the historical palette** (golden fixtures must stay
+  unchanged — never `-update` them for a theme change). Built-ins
+  (`default`/`cga`/`green`/`amber`) live in `internal/ui/themes.go`
+  (`ui.ThemeByName`). `app` selects one — hidden easter-egg flags
+  `-cga`/`-green`/`-amber` (caught in the pre-parse scan beside `-fix` and
+  stripped from args, so invisible in `-help`) win over the documented
+  `STRUCTALIGN_THEME` env var, else default; an unknown name warns to stderr.
+  Theme is orthogonal to `-color` (palette only applies when color is on). This is
+  not a full theming system; per-role/custom themes are a planned later feature.

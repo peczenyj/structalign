@@ -14,6 +14,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
 [![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#code-analysis)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
 > rewrite — plus a per-field **layout inspector**.
@@ -92,13 +93,18 @@ structalign [flags] [packages]
   packages        Go package patterns: ./..., import paths, directories, or
                   single .go files (defaults the go tool understands)
 
-  -diff string    diff style: unified | side | none   (default "unified")
+  -diff value     diff style: unified|side|none       (default "unified")
   -width int      column width per side for -diff=side (default: auto from terminal)
-  -color string   auto | always | never               (default "auto")
+  -color value    colorize: auto|always|never         (default "auto")
   -inspect        inspect layout instead of diffing: print each struct as
                   annotated Go source with size/align/padding comments
   -verbose        in -inspect mode, show padding on its own `_` line
   -tags           preserve struct field tags in output (default: strip them)
+  -summary        in diff mode, print a one-line summary after the diffs
+  -sort           present results largest-first (diff: by bytes saved;
+                  inspect: by struct size)
+  -threshold int  in diff mode, only show structs that save at least N bytes
+                  (default 0; negatives treated as 0)
 
   -type string    only consider named structs matching these comma-separated
                   glob patterns (e.g. "*Request,Config"); empty means all
@@ -108,6 +114,11 @@ structalign [flags] [packages]
   -tests          also analyze _test.go files (skipped by default)
   -skip-cache-padded
                   skip structs with a golang.org/x/sys/cpu.CacheLinePad field
+  -show-nolint    show structs even when their type carries a recognized
+                  //nolint directive (directives are respected by default)
+  -nolint-linters string
+                  //nolint tokens that suppress a finding (default
+                  "fieldalignment"; a bare //nolint always counts)
 
   -version        print version and exit
 ```
@@ -115,6 +126,12 @@ structalign [flags] [packages]
 In the default `-color=auto`, color is emitted only when stdout is a terminal and
 the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
+
+The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
+`default` (the standard colors), `cga` (a bright 16-color CGA look), or `green` /
+`amber` (single-hue phosphor-monitor emulations). It only affects *which* colors
+are used when color is on; it does not turn color on by itself. An unknown value
+warns and falls back to `default`.
 
 Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
 CI as a check. Inspect mode is informational and always exits 0.
@@ -152,6 +169,15 @@ _example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
 ```
 
 Print the reordered struct only (no diff): `structalign -diff=none ./_example`.
+
+With `-summary`, a one-line aggregate is appended after the diffs (counting only
+the structs shown, and the bytes their reorderings would save):
+
+```
+$ structalign -summary ./_example
+... (diffs above) ...
+Summary: 5 structs affected, 56 bytes saved total
+```
 
 ### Inspect layout
 
@@ -215,6 +241,56 @@ A field can depend on a type parameter indirectly — through a composite or a
 nested generic — and the marker follows it: `map[K]V` reports `-- assume K=any,
 V=any`, and `Inner[V]` reports `-- assume V=any`.
 
+#### Inspecting types you don't own
+
+structalign resolves its package arguments through `go/packages`, so you can
+point `-inspect` (and the diff modes) at types you didn't write — as long as the
+package is reachable from the **current directory's `go.mod`**.
+
+Standard-library structs work out of the box — give the import path and a
+`-type` filter:
+
+```
+$ structalign -inspect -type=Time time
+type Time struct { // size: 24, align: 8, padding: 0
+	wall uint64   // size:  8, align: 8
+	ext int64     // size:  8, align: 8
+	loc *Location // size:  8, align: 8
+}
+```
+
+Dependencies already in your `go.mod` resolve the same way:
+
+```
+$ structalign -inspect -type=Group golang.org/x/sync/errgroup
+type Group struct { // size: 64, align: 8, padding: 4
+	cancel func(error) // size:  8, align: 8
+	wg sync.WaitGroup  // size: 16, align: 8
+	sem chan token     // size:  8, align: 8
+	errOnce sync.Once  // size: 12, align: 4, padding: 4
+	err error          // size: 16, align: 8
+}
+```
+
+Any other library must be *required* by the module you run in — resolution is
+against the current `go.mod`, **not** arbitrary packages sitting in `$GOPATH` or
+the module cache. A package the module doesn't require fails with `no required
+module provides package …`. The quickest way to inspect an arbitrary library is
+a throwaway module:
+
+```sh
+mkdir /tmp/inspect && cd /tmp/inspect
+go mod init scratch
+go get github.com/rs/zerolog
+structalign -inspect -type=Logger github.com/rs/zerolog
+```
+
+Built-in **scalar** types (`int`, `bool`, `string`, …) can't be inspected:
+inspect prints a *struct field layout*, and scalars have no fields. (The
+`builtin` pseudo-package is in the default `-exclude` for the same reason.) To
+see a scalar's size, inspect a struct that contains it — a `string` field shows
+`size: 16` on a 64-bit target.
+
 ### Filtering by type name
 
 `-type` takes a comma-separated list of glob patterns (`path.Match` syntax: `*`,
@@ -248,6 +324,13 @@ structalign -skip-cache-padded ./...         # skip structs guarded by cpu.Cache
 - **`-skip-cache-padded`** leaves structs with a
   [`cpu.CacheLinePad`](https://pkg.go.dev/golang.org/x/sys/cpu#CacheLinePad) field
   alone, since reordering would move the pad and defeat its false-sharing guard.
+- **`//nolint` directives are respected by default** (diff mode): a struct whose
+  type declaration carries a recognized `//nolint` — `//nolint:fieldalignment` or
+  a bare `//nolint` — is suppressed, matching golangci-lint. `-nolint-linters`
+  customizes which named tokens count (default `fieldalignment`; e.g.
+  `-nolint-linters=fieldalignment,betteralign`); a bare `//nolint` always counts.
+  `-show-nolint` reveals suppressed structs (audit mode). Inspect mode ignores
+  these directives.
 
 ### Field tags
 
@@ -377,3 +460,7 @@ conventions, and the release process.
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
+
+## Foo
+
+bar
