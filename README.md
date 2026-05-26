@@ -454,3 +454,7 @@ conventions, and the release process.
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
+
+## Foo
+
+bar
