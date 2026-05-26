@@ -78,7 +78,7 @@ produces. The pipeline, orchestrated by `app.Run`:
    findings by savings, layouts by `Layout.Total`), and hand the result to
    **`ui.Printer`**, which renders (unified / side-by-side / proposed-only diff
    via `textdiff`, or annotated layout) to an `io.Writer`. With `-summary` (diff
-   only) it then prints a one-line `Summary: N structs affected, M bytes saved`.
+   only) it then prints a one-line `Summary: N structs affected, M bytes saved total`.
    The savings metric is the shared `app.savings(common.Finding) int64` helper
    (used by sort, threshold, and summary). Because the logic packages return data
    and `ui` consumes it, rendering is testable by injecting findings — no

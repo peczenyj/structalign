@@ -5,13 +5,16 @@ package ui
 // (bold vs dim) plus the +/- diff prefixes to distinguish added from removed.
 var builtinThemes = map[string]Theme{
 	"default": DefaultTheme(),
+	// The iconic CGA mode-4 palette 1 (high intensity): cyan, magenta, white on
+	// black. Using magenta for removed/padding instead of the default's red makes
+	// the palette visibly distinct from the default rather than a mere brightening.
 	"cga": {
-		Header:  "\x1b[1m\x1b[96m", // bright cyan
-		Added:   "\x1b[92m",        // bright green
-		Removed: "\x1b[91m",        // bright red
-		Meta:    "\x1b[90m",        // bright black (gray)
-		Padding: "\x1b[91m",        // bright red
-		Label:   "\x1b[1m\x1b[97m", // bright white
+		Header:  "\x1b[1m\x1b[7m\x1b[95m", // bold + reverse-video magenta (a header bar)
+		Added:   "\x1b[96m",               // bright cyan
+		Removed: "\x1b[95m",               // bright magenta
+		Meta:    "\x1b[90m",               // bright black (gray)
+		Padding: "\x1b[95m",               // bright magenta
+		Label:   "\x1b[1m\x1b[97m",        // bright white
 	},
 	"green": {
 		Header:  "\x1b[1m\x1b[32m", // bold green

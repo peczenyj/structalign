@@ -176,7 +176,7 @@ the structs shown, and the bytes their reorderings would save):
 ```
 $ structalign -summary ./_example
 ... (diffs above) ...
-Summary: 5 structs affected, 56 bytes saved
+Summary: 5 structs affected, 56 bytes saved total
 ```
 
 ### Inspect layout

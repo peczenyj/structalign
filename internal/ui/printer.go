@@ -81,7 +81,7 @@ func (p *Printer) RenderLayouts(layouts []common.Layout, verbose, keepTags bool)
 // RenderSummary writes a one-line diff-mode summary to Out. The "Summary:"
 // label is bold when color is on; counts are pluralized.
 func (p *Printer) RenderSummary(structs int, bytesSaved int64) {
-	fmt.Fprintf(p.Out, "%s %d %s affected, %d %s saved\n", //nolint:errcheck
+	fmt.Fprintf(p.Out, "%s %d %s affected, %d %s saved total\n", //nolint:errcheck
 		paint(p.Color, p.theme().Label, "Summary:"),
 		structs, plural(int64(structs), "struct", "structs"),
 		bytesSaved, plural(bytesSaved, "byte", "bytes"))

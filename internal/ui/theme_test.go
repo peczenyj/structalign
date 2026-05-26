@@ -44,6 +44,20 @@ func TestPrinterUsesSetTheme(t *testing.T) {
 	assert.Contains(t, buf.String(), "\x1b[1m\x1b[97m", "cga Label (bold bright white) should be used")
 }
 
+// CGA must be a visibly distinct palette, not a brightened default. It uses the
+// iconic mode-4 palette 1 (cyan/magenta/white): the header is magenta (not the
+// default's cyan) and removed lines are magenta (not red).
+func TestCgaThemeIsDistinctFromDefault(t *testing.T) {
+	def := ui.DefaultTheme()
+	cga, ok := ui.ThemeByName("cga")
+	assert.True(t, ok)
+	assert.NotEqual(t, def.Header, cga.Header, "cga header must differ from default")
+	assert.Contains(t, cga.Header, "95", "cga header is magenta")
+	assert.Contains(t, cga.Added, "96", "cga added is cyan")
+	assert.Contains(t, cga.Removed, "95", "cga removed is magenta, not red")
+	assert.NotContains(t, cga.Removed, "31", "cga must not reuse the default red")
+}
+
 // The green (P1 phosphor) theme is monochrome: it must never use red (31),
 // since add/removed are distinguished by intensity + the +/- prefixes.
 func TestGreenThemeIsMonochrome(t *testing.T) {
