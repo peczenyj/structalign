@@ -13,6 +13,9 @@ func TestTruncPadUnicode(t *testing.T) {
 	assert.Equal(t, "Hello …", res)
 	assert.Equal(t, 7, len([]rune(res)))
 
+	assert.Equal(t, "…", truncPad(s, 1))
+	assert.Equal(t, "", truncPad(s, 0))
+
 	res2 := truncPad("short", 10)
 	assert.Equal(t, "short     ", res2)
 	assert.Equal(t, 10, len(res2))

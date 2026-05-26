@@ -35,6 +35,27 @@ func TestRunEggFlagWithValue(t *testing.T) {
 
 	a := &app.App{Loader: ml, Stdout: &out, Stderr: &errb}
 
-	code := a.Run([]string{"-cga=true", "pkg"})
+	// Exact match
+	code := a.Run([]string{"-cga", "pkg"})
+	assert.NotEqual(t, 2, code)
+
+	// -flag=true
+	code = a.Run([]string{"-cga=true", "pkg"})
 	assert.NotEqual(t, 2, code, "should not fail with 'flag provided but not defined'")
+
+	// -flag=1
+	code = a.Run([]string{"-green=1", "pkg"})
+	assert.NotEqual(t, 2, code, "should not fail with 'flag provided but not defined'")
+
+	// -flag=0 (should be stripped from args, but themeName remains default)
+	code = a.Run([]string{"-amber=0", "pkg"})
+	assert.NotEqual(t, 2, code, "egg flag should be stripped even if value is 0/false")
+}
+
+func TestRunInvalidFlag(t *testing.T) {
+	var out, errb bytes.Buffer
+	a := &app.App{Stdout: &out, Stderr: &errb}
+
+	code := a.Run([]string{"-unknown-flag"})
+	assert.Equal(t, 2, code)
 }

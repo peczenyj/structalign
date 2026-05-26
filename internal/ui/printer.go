@@ -162,11 +162,6 @@ func (p *Printer) renderSideBySide(a, b string) {
 		lc, rc string
 	}
 	var rows []row
-	var pendDel []string
-	flush := func() {
-		// pair pending deletions with nothing on the right; handled inline below
-	}
-	_ = flush
 	i := 0
 	for i < len(ops) {
 		op := ops[i]
@@ -201,7 +196,6 @@ func (p *Printer) renderSideBySide(a, b string) {
 			rows = append(rows, row{"", op.Text, "", th.Added})
 			i++
 		}
-		_ = pendDel
 	}
 
 	sep := " │ "
