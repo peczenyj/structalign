@@ -114,6 +114,11 @@ structalign [flags] [packages]
   -tests          also analyze _test.go files (skipped by default)
   -skip-cache-padded
                   skip structs with a golang.org/x/sys/cpu.CacheLinePad field
+  -show-nolint    show structs even when their type carries a recognized
+                  //nolint directive (directives are respected by default)
+  -nolint-linters string
+                  //nolint tokens that suppress a finding (default
+                  "fieldalignment"; a bare //nolint always counts)
 
   -version        print version and exit
 ```
@@ -313,6 +318,13 @@ structalign -skip-cache-padded ./...         # skip structs guarded by cpu.Cache
 - **`-skip-cache-padded`** leaves structs with a
   [`cpu.CacheLinePad`](https://pkg.go.dev/golang.org/x/sys/cpu#CacheLinePad) field
   alone, since reordering would move the pad and defeat its false-sharing guard.
+- **`//nolint` directives are respected by default** (diff mode): a struct whose
+  type declaration carries a recognized `//nolint` — `//nolint:fieldalignment` or
+  a bare `//nolint` — is suppressed, matching golangci-lint. `-nolint-linters`
+  customizes which named tokens count (default `fieldalignment`; e.g.
+  `-nolint-linters=fieldalignment,betteralign`); a bare `//nolint` always counts.
+  `-show-nolint` reveals suppressed structs (audit mode). Inspect mode ignores
+  these directives.
 
 ### Field tags
 
