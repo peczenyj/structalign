@@ -3,6 +3,7 @@
 package layout
 
 import (
+	"go/token"
 	"go/types"
 	"sort"
 	"strings"
@@ -27,36 +28,64 @@ func (i *Inspector) Layouts(t common.Target, opts common.Options) []common.Layou
 	if t.Types == nil || t.Sizes == nil {
 		return nil
 	}
-	scope := t.Types.Scope()
-	names := scope.Names()
-	sort.Strings(names)
 
 	var out []common.Layout
+	// discovery via types.Info: finds all named structs, including local ones
+	// inside function bodies, which t.Types.Scope() would miss.
+	names := i.discoverStructNames(t)
+
+	// To avoid duplicates (multiple Defs for the same type name in different
+	// scopes), we track what we've seen.
+	seen := make(map[token.Pos]bool)
+
 	for _, n := range names {
 		if len(opts.Patterns) > 0 && !match.MatchAny(opts.Patterns, n) {
 			continue
 		}
-		tn, ok := scope.Lookup(n).(*types.TypeName)
-		if !ok {
-			continue
+		// Search for the TypeName in the Info.Defs map
+		for _, obj := range t.TypesInfo.Defs {
+			tn, ok := obj.(*types.TypeName)
+			if !ok || tn.Name() != n || seen[tn.Pos()] {
+				continue
+			}
+			if l, ok := i.buildLayout(t, n, tn, opts); ok {
+				out = append(out, l)
+				seen[tn.Pos()] = true
+			}
 		}
-		named, _ := tn.Type().(*types.Named)
-		st, display, typeParams, note, assumed := resolveStruct(named, tn.Type())
-		if st == nil {
-			continue // not a struct, or a generic we couldn't instantiate
-		}
-		if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, tn.Pos()) {
-			continue
-		}
-		if opts.SkipCachePadded && structfilter.HasCacheLinePad(st) {
-			continue
-		}
-		l := computeLayout(n, st, display, assumed, t.Sizes)
-		l.TypeParams = typeParams
-		l.Note = note
-		out = append(out, l)
 	}
 	return out
+}
+
+func (i *Inspector) discoverStructNames(t common.Target) []string {
+	var names []string
+	for id, obj := range t.TypesInfo.Defs {
+		if tn, ok := obj.(*types.TypeName); ok {
+			if _, ok := tn.Type().Underlying().(*types.Struct); ok {
+				names = append(names, id.Name)
+			}
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (i *Inspector) buildLayout(t common.Target, n string, tn *types.TypeName, opts common.Options) (common.Layout, bool) {
+	named, _ := tn.Type().(*types.Named)
+	st, display, typeParams, note, assumed := resolveStruct(named, tn.Type())
+	if st == nil {
+		return common.Layout{}, false
+	}
+	if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, tn.Pos()) {
+		return common.Layout{}, false
+	}
+	if opts.SkipCachePadded && structfilter.HasCacheLinePad(st) {
+		return common.Layout{}, false
+	}
+	l := computeLayout(n, st, display, assumed, t.Sizes)
+	l.TypeParams = typeParams
+	l.Note = note
+	return l, true
 }
 
 // resolveStruct returns the struct to measure (st) and the struct whose field

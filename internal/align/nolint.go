@@ -102,7 +102,17 @@ func mergeNolint(dst *nolintInfo, src nolintInfo) {
 // "//nolint" (alone or followed by space) is bare; "//nolint:list" adds named
 // tokens. A comment like "//nolintfoo" is not a directive.
 func parseNolint(text string, info *nolintInfo) {
-	text = strings.TrimSpace(strings.TrimPrefix(text, "//"))
+	text = strings.TrimSpace(text)
+	switch {
+	case strings.HasPrefix(text, "//"):
+		text = strings.TrimPrefix(text, "//")
+	case strings.HasPrefix(text, "/*") && strings.HasSuffix(text, "*/"):
+		text = strings.TrimPrefix(text, "/*")
+		text = strings.TrimSuffix(text, "*/")
+	default:
+		return
+	}
+	text = strings.TrimSpace(text)
 	if !strings.HasPrefix(text, "nolint") {
 		return
 	}
