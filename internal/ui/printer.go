@@ -329,13 +329,17 @@ func withTypeName(src, name string) string {
 func truncPad(s string, w int) string {
 	// expand tabs to 4 spaces for stable columns
 	s = strings.ReplaceAll(s, "\t", "    ")
-	if len(s) > w {
+	runes := []rune(s)
+	if len(runes) > w {
 		if w > 1 {
-			return s[:w-1] + "…"
+			return string(runes[:w-1]) + "…"
 		}
-		return s[:w]
+		if w == 1 {
+			return "…"
+		}
+		return ""
 	}
-	return s + strings.Repeat(" ", w-len(s))
+	return s + strings.Repeat(" ", w-len(runes))
 }
 
 func paint(on bool, code, s string) string {
