@@ -23,11 +23,43 @@ const (
 	cBold  = "\x1b[1m"
 )
 
+// Theme maps semantic roles to ANSI SGR sequences. The zero value resolves to
+// DefaultTheme (see Printer.theme), which reproduces the historical palette.
+type Theme struct {
+	Header  string // finding header / inspect "type X struct {" line
+	Added   string // "+" diff lines / added side cells
+	Removed string // "-" diff lines / removed side cells
+	Meta    string // column titles, divider, layout note, "-- assume" marker
+	Padding string // inspect padding comment / "_" padding line
+	Label   string // the -summary "Summary:" label
+}
+
+// DefaultTheme is the byte-for-byte historical palette.
+func DefaultTheme() Theme {
+	return Theme{
+		Header:  cBold + cCyan,
+		Added:   cGreen,
+		Removed: cRed,
+		Meta:    cDim,
+		Padding: cRed,
+		Label:   cBold,
+	}
+}
+
 // Printer renders to Out using the given color/width settings.
 type Printer struct {
 	Out   io.Writer
 	Color bool
-	Width int // per-side column width for side-by-side diffs
+	Width int   // per-side column width for side-by-side diffs
+	Theme Theme // zero value resolves to DefaultTheme
+}
+
+// theme returns the configured theme, or DefaultTheme when unset.
+func (p *Printer) theme() Theme {
+	if (p.Theme == Theme{}) {
+		return DefaultTheme()
+	}
+	return p.Theme
 }
 
 // RenderFindings renders each finding in the chosen diff style. Returns the count.
@@ -50,7 +82,7 @@ func (p *Printer) RenderLayouts(layouts []common.Layout, verbose, keepTags bool)
 // label is bold when color is on; counts are pluralized.
 func (p *Printer) RenderSummary(structs int, bytesSaved int64) {
 	fmt.Fprintf(p.Out, "%s %d %s affected, %d %s saved\n", //nolint:errcheck
-		paint(p.Color, cBold, "Summary:"),
+		paint(p.Color, p.theme().Label, "Summary:"),
 		structs, plural(int64(structs), "struct", "structs"),
 		bytesSaved, plural(bytesSaved, "byte", "bytes"))
 }
@@ -76,7 +108,7 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 		pct := float64(f.OldSize-f.NewSize) / float64(f.OldSize) * 100
 		header += fmt.Sprintf(" (%02.2f%% smaller)", pct)
 	}
-	fmt.Fprintln(p.Out, paint(p.Color, cBold+cCyan, header)) //nolint:errcheck
+	fmt.Fprintln(p.Out, paint(p.Color, p.theme().Header, header)) //nolint:errcheck
 
 	if f.Original == "" || f.Proposed == "" {
 		fmt.Fprintln(p.Out, "  (no suggested fix produced)") //nolint:errcheck
@@ -102,6 +134,7 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 }
 
 func (p *Printer) renderUnified(a, b string) {
+	th := p.theme()
 	al := strings.Split(a, "\n")
 	bl := strings.Split(b, "\n")
 	ops := textdiff.Lines(al, bl)
@@ -110,14 +143,15 @@ func (p *Printer) renderUnified(a, b string) {
 		case textdiff.Equal:
 			fmt.Fprintf(p.Out, "  %s\n", op.Text) //nolint:errcheck
 		case textdiff.Del:
-			fmt.Fprintln(p.Out, paint(p.Color, cRed, "- "+op.Text)) //nolint:errcheck
+			fmt.Fprintln(p.Out, paint(p.Color, th.Removed, "- "+op.Text)) //nolint:errcheck
 		case textdiff.Add:
-			fmt.Fprintln(p.Out, paint(p.Color, cGreen, "+ "+op.Text)) //nolint:errcheck
+			fmt.Fprintln(p.Out, paint(p.Color, th.Added, "+ "+op.Text)) //nolint:errcheck
 		}
 	}
 }
 
 func (p *Printer) renderSideBySide(a, b string) {
+	th := p.theme()
 	al := strings.Split(a, "\n")
 	bl := strings.Split(b, "\n")
 	ops := textdiff.Lines(al, bl)
@@ -156,15 +190,15 @@ func (p *Printer) renderSideBySide(a, b string) {
 				var l, r string
 				var lc, rc string
 				if k < len(dels) {
-					l, lc = dels[k], cRed
+					l, lc = dels[k], th.Removed
 				}
 				if k < len(adds) {
-					r, rc = adds[k], cGreen
+					r, rc = adds[k], th.Added
 				}
 				rows = append(rows, row{l, r, lc, rc})
 			}
 		case textdiff.Add:
-			rows = append(rows, row{"", op.Text, "", cGreen})
+			rows = append(rows, row{"", op.Text, "", th.Added})
 			i++
 		}
 		_ = pendDel
@@ -177,10 +211,10 @@ func (p *Printer) renderSideBySide(a, b string) {
 	// Pad the header text manually (not via %-*s) so it stays correct even
 	// when paint() wraps it in ANSI escapes, which %-*s would miscount.
 	fmt.Fprintf(p.Out, "  %s%s%s\n", //nolint:errcheck
-		paint(p.Color, cDim, truncPad("current", p.Width)),
+		paint(p.Color, th.Meta, truncPad("current", p.Width)),
 		sep,
-		paint(p.Color, cDim, "proposed"))
-	fmt.Fprintf(p.Out, "  %s\n", paint(p.Color, cDim, //nolint:errcheck
+		paint(p.Color, th.Meta, "proposed"))
+	fmt.Fprintf(p.Out, "  %s\n", paint(p.Color, th.Meta, //nolint:errcheck
 		strings.Repeat("─", p.Width)+"─┼─"+strings.Repeat("─", p.Width)))
 	for _, r := range rows {
 		left := truncPad(r.l, p.Width)
@@ -196,6 +230,7 @@ func (p *Printer) renderSideBySide(a, b string) {
 }
 
 func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
+	th := p.theme()
 	// Field declaration is "<name> <type>" (plus tag when -tags is set); align
 	// all comments to the widest declaration.
 	decls := make([]string, len(l.Fields))
@@ -213,13 +248,13 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 
 	// Optional caveat (e.g. the generic-type disclaimer) above the declaration.
 	if l.Note != "" {
-		fmt.Fprintln(p.Out, paint(p.Color, cDim, "// "+l.Note)) //nolint:errcheck
+		fmt.Fprintln(p.Out, paint(p.Color, th.Meta, "// "+l.Note)) //nolint:errcheck
 	}
 
 	// Header: the struct opening line carries size/align/padding.
 	header := fmt.Sprintf("type %s%s struct { // size: %d, align: %d, padding: %d",
 		l.Name, l.TypeParams, l.Total, l.Align, l.Padding)
-	fmt.Fprintln(p.Out, paint(p.Color, cBold+cCyan, header)) //nolint:errcheck
+	fmt.Fprintln(p.Out, paint(p.Color, th.Header, header)) //nolint:errcheck
 
 	comments, commentWidth := layoutComments(l.Fields, verbose)
 
@@ -227,18 +262,18 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 		comment := comments[i]
 		rendered := comment
 		if !verbose && f.Padding > 0 {
-			rendered = paint(p.Color, cRed, comment)
+			rendered = paint(p.Color, th.Padding, comment)
 		}
 		line := fmt.Sprintf("\t%-*s // %s", declWidth, decls[i], rendered)
 		if f.Assume != "" {
 			pad := strings.Repeat(" ", commentWidth-len(comment))
-			line += pad + "   " + paint(p.Color, cDim, "-- assume "+f.Assume)
+			line += pad + "   " + paint(p.Color, th.Meta, "-- assume "+f.Assume)
 		}
 		fmt.Fprintln(p.Out, line) //nolint:errcheck
 		if verbose && f.Padding > 0 {
 			// Field line carries no padding; padding gets its own `_` line.
 			pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.Padding)
-			fmt.Fprintln(p.Out, paint(p.Color, cRed, pad)) //nolint:errcheck
+			fmt.Fprintln(p.Out, paint(p.Color, th.Padding, pad)) //nolint:errcheck
 		}
 	}
 	fmt.Fprintln(p.Out, "}") //nolint:errcheck
