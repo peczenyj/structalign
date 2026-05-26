@@ -5,20 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-05-26
+
+### Added
+
+- Add -summary flag for diff-mode summary line
+- -sort orders diff findings by bytes saved (#36)
+- Extend -sort to order inspect layouts by struct size (#37)
+- -threshold filters diff findings by bytes saved (#38)
+- Respect //nolint directives (diff mode) (#39)
 
 ### Changed
 
-- Stop merge commits leaking into the changelog
+- Update README.md
+- *(enum)* Add enumeration colorize and ensure diffstyle implement pflag.Value
+- Wire the new enumeration type colorize and use pflag.Value interface to extract the allowed values
+- *(app)* Collect findings/layouts then render
+
+### Fixed
+
+- *(changelog)* Pin git-cliff remote so compare links resolve
+- Address analysis and discovery bugs (#42)
+- Address UI and CLI bugs (#41)
+- Legible CGA palette and 'total' in summary line (#44)
+
+### Documentation
+
+- Repair broken compare links in CHANGELOG
+- Update readme and agents
+- Document inspecting stdlib, dependency, and arbitrary library types
+- Update AGENTS.md for v0.6.0 features
 
 ## [0.5.2] - 2026-05-25
 
 ### Changed
 
-- Merge tag 'v0.5.1' into devel
 - Revert "fix: refine representativeType logic for generics"
-- Merge pull request #22 from peczenyj/pr/refine-layout-logic
-- Merge pull request #23 from peczenyj/feature/ci-go-consistent
 
 ### Fixed
 
@@ -35,12 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - *(ui)* Honor the NO_COLOR environment variable
 
-### Changed
-
-- Merge tag 'v0.5.0' into devel
-- Merge pull request #21 from peczenyj/feature/no-color
-- Merge branch 'release/v0.5.1'
-
 ## [0.5.0] - 2026-05-25
 
 ### Added
@@ -48,15 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *(layout)* Inspect generic structs with a representative type + disclaimer
 - *(layout)* Keep generic fields source-faithful with per-field assume marker
 - *(app)* Nudge -fix users toward fieldalignment (easter egg)
-
-### Changed
-
-- Merge tag 'v0.4.0' into devel
-- Merge pull request #16 from peczenyj/feature/version-buildinfo
-- Merge pull request #17 from peczenyj/feature/inspect-generics
-- Merge pull request #18 from peczenyj/feature/fix-easter-egg
-- Merge pull request #19 from peczenyj/docs/task-commands
-- Merge branch 'release/v0.5.0'
 
 ### Fixed
 
@@ -80,11 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Merge tag 'v0.3.0' into devel
 - Move main to the module root
-- Merge pull request #14 from peczenyj/feature/v0.4.0-filters-and-display
-- Merge pull request #15 from peczenyj/feature/v0.4.0-docs
-- Merge branch 'release/v0.4.0'
 
 ### Documentation
 
@@ -107,21 +110,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Merge tag 'v0.2.0' into devel
 - Update README.md
-- Merge pull request #7 from peczenyj/feature/tooling-task-golangci
 - *(common)* Generate DiffStyle as a uint8 enum via enumer
-- Merge pull request #8 from peczenyj/feature/pkg-common
-- Merge pull request #9 from peczenyj/feature/internal-sizes-match
 - Update README.md
 - Update README.md
-- Merge pull request #11 from peczenyj/feature/codecov
-- Merge pull request #10 from peczenyj/feature/internal-loader
 - Keep readSource verbatim; back testutil with a real on-disk file
 - Wire app package; reduce main.go to an entrypoint
-- Merge pull request #12 from peczenyj/feature/v0.3.0-decoupling
-- Merge pull request #13 from peczenyj/feature/v0.3.0-followup
-- Merge branch 'release/v0.3.0'
 
 ### Documentation
 
@@ -132,12 +126,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support Go package patterns via go/packages (closes #5)
-
-### Changed
-
-- Merge tag 'v0.1.0' into devel
-- Merge pull request #6 from peczenyj/feature/5-recursive-package-pattern
-- Merge branch 'release/v0.2.0'
 
 ## [0.1.0] - 2026-05-24
 
@@ -154,7 +142,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bind flags to a config struct; fix -width and -verbose help
 - Modernize to Go 1.25 idioms
-- Merge branch 'release/v0.1.0'
 
 ### Fixed
 
@@ -172,6 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.6.0]: https://github.com/peczenyj/structalign/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/peczenyj/structalign/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/peczenyj/structalign/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/peczenyj/structalign/compare/v0.4.0..v0.5.0
