@@ -70,21 +70,21 @@ $ echo $?
 
 ## Why it exists
 
-Until Go 1.25,
-`golang.org/x/tools/.../fieldalignment` had exactly two modes:
+`golang.org/x/tools/.../fieldalignment` has exactly two modes:
 
 - **report** — prints a terse message like `struct of size 24 could be 16` and nothing else;
 - **`-fix`** — silently rewrites your source.
 
-There was no "show me the proposed struct / show me the diff" mode, and no way to
-inspect a struct's layout. `structalign` fills both gaps.
+The analysis driver can emit a diff — but only as -fix -diff together, producing a unified patch meant for patch/git apply, not a mode for reviewing the change. There was no readable “show me the proposed struct” view, and no way to inspect a struct’s layout. structalign fills both gaps: a review-oriented diff (side-by-side, color, summary, threshold, tag-stripping) and a per-field layout inspector.
 
 | | report a problem | show the diff | rewrite files | inspect layout | CI-friendly exit code |
 |---|:---:|:---:|:---:|:---:|:---:|
-| `fieldalignment`        | ✅ | ❌ | ❌ | ❌ | ✅ |
+| `fieldalignment`        | ✅ | ✅† | ❌ | ❌ | ✅ |
 | `fieldalignment -fix`   | ❌ | ❌ | ✅ | ❌ | ❌ |
 | `structlayout`          | ❌ | ❌ | ❌ | ✅ | ❌ |
 | **structalign**         | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+† Only via `-fix -diff` together: the analysis driver emits a unified patch for `patch`/`git apply`, not human-oriented review output. structalign's diff is read-only and standalone (side-by-side, color, summary, tag-stripping).
 
 ## Usage
 
