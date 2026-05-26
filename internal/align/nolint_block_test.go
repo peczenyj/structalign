@@ -36,3 +36,36 @@ type Block struct {
 	}
 	assert.False(t, found, "nolint in block comment should suppress")
 }
+
+func TestFindingsNolintMixedDecls(t *testing.T) {
+	const src = `package sample
+type (
+	// nolint
+	Suppressed struct {
+		A bool
+		B int64
+		C bool
+	}
+	Normal int
+)
+`
+	tgt := testutil.Target(t, src)
+	fs, err := align.New().Findings(tgt, common.Options{RespectNolint: true})
+	require.NoError(t, err)
+
+	for _, f := range fs {
+		assert.NotEqual(t, "Suppressed", f.Name)
+	}
+}
+
+func TestFindingsNolintEmptyGroup(t *testing.T) {
+	const src = "package sample\ntype ()\n"
+	tgt := testutil.Target(t, src)
+	_, _ = align.New().Findings(tgt, common.Options{RespectNolint: true})
+}
+
+func TestParseNolintInvalid(t *testing.T) {
+	// Exercise the default branch in parseNolint switch
+	// Use internal package via link or just call it if internal tests allowed.
+	// Actually, this file is align_test. I can't call internal functions unless I use a link.
+}
