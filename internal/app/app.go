@@ -70,6 +70,17 @@ type options struct {
 	tests           bool
 	generated       bool
 	skipCachePadded bool
+	summary         bool
+}
+
+// savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
+// the proposed layout is not smaller. Shared by -summary (and, later, -sort and
+// -threshold).
+func savings(f common.Finding) int64 {
+	if f.OldSize > 0 && f.NewSize > 0 && f.NewSize < f.OldSize {
+		return f.OldSize - f.NewSize
+	}
+	return 0
 }
 
 // Run parses args (excluding argv[0]) and executes. Returns the process exit
@@ -94,6 +105,7 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.tests, "tests", false, "also analyze _test.go files")
 	fs.BoolVar(&opt.generated, "generated", false, "also analyze generated files (// Code generated ... DO NOT EDIT.)")
 	fs.BoolVar(&opt.skipCachePadded, "skip-cache-padded", false, "skip structs containing a golang.org/x/sys/cpu.CacheLinePad field")
+	fs.BoolVar(&opt.summary, "summary", false, "in diff mode, print a one-line summary after the diffs")
 	fs.Usage = func() {
 		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
@@ -190,7 +202,13 @@ func (a *App) Run(args []string) int {
 		total = printer.RenderFindings(allFindings, opt.diff)
 	}
 
-	if total == 0 {
+	if opt.summary && !opt.inspect {
+		var bytesSaved int64
+		for _, f := range allFindings {
+			bytesSaved += savings(f)
+		}
+		printer.RenderSummary(total, bytesSaved)
+	} else if total == 0 {
 		if opt.inspect {
 			fmt.Fprintln(a.Stderr, "no matching structs found")
 		} else {
