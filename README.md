@@ -70,12 +70,13 @@ $ echo $?
 
 ## Why it exists
 
-`golang.org/x/tools/.../fieldalignment` has exactly two modes:
+Until Go 1.25,
+`golang.org/x/tools/.../fieldalignment` had exactly two modes:
 
 - **report** — prints a terse message like `struct of size 24 could be 16` and nothing else;
 - **`-fix`** — silently rewrites your source.
 
-There is no "show me the proposed struct / show me the diff" mode, and no way to
+There was no "show me the proposed struct / show me the diff" mode, and no way to
 inspect a struct's layout. `structalign` fills both gaps.
 
 | | report a problem | show the diff | rewrite files | inspect layout | CI-friendly exit code |
