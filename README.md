@@ -103,6 +103,8 @@ structalign [flags] [packages]
   -summary        in diff mode, print a one-line summary after the diffs
   -sort           present results largest-first (diff: by bytes saved;
                   inspect: by struct size)
+  -threshold int  in diff mode, only show structs that save at least N bytes
+                  (default 0; negatives treated as 0)
 
   -type string    only consider named structs matching these comma-separated
                   glob patterns (e.g. "*Request,Config"); empty means all
