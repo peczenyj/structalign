@@ -46,6 +46,23 @@ func (p *Printer) RenderLayouts(layouts []common.Layout, verbose, keepTags bool)
 	return len(layouts)
 }
 
+// RenderSummary writes a one-line diff-mode summary to Out. The "Summary:"
+// label is bold when color is on; counts are pluralized.
+func (p *Printer) RenderSummary(structs int, bytesSaved int64) {
+	fmt.Fprintf(p.Out, "%s %d %s affected, %d %s saved\n", //nolint:errcheck
+		paint(p.Color, cBold, "Summary:"),
+		structs, plural(int64(structs), "struct", "structs"),
+		bytesSaved, plural(bytesSaved, "byte", "bytes"))
+}
+
+// plural returns one when n == 1, else many.
+func plural(n int64, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
 func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 	loc := f.Fset.Position(f.Pos)
 	file := relPath(loc.Filename)

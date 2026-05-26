@@ -100,6 +100,7 @@ structalign [flags] [packages]
                   annotated Go source with size/align/padding comments
   -verbose        in -inspect mode, show padding on its own `_` line
   -tags           preserve struct field tags in output (default: strip them)
+  -summary        in diff mode, print a one-line summary after the diffs
 
   -type string    only consider named structs matching these comma-separated
                   glob patterns (e.g. "*Request,Config"); empty means all
@@ -153,6 +154,15 @@ _example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
 ```
 
 Print the reordered struct only (no diff): `structalign -diff=none ./_example`.
+
+With `-summary`, a one-line aggregate is appended after the diffs (counting only
+the structs shown, and the bytes their reorderings would save):
+
+```
+$ structalign -summary ./_example
+... (diffs above) ...
+Summary: 5 structs affected, 56 bytes saved
+```
 
 ### Inspect layout
 
