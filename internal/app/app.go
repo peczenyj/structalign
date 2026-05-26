@@ -107,7 +107,7 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.generated, "generated", false, "also analyze generated files (// Code generated ... DO NOT EDIT.)")
 	fs.BoolVar(&opt.skipCachePadded, "skip-cache-padded", false, "skip structs containing a golang.org/x/sys/cpu.CacheLinePad field")
 	fs.BoolVar(&opt.summary, "summary", false, "in diff mode, print a one-line summary after the diffs")
-	fs.BoolVar(&opt.sort, "sort", false, "present results largest-first (diff: by bytes saved)")
+	fs.BoolVar(&opt.sort, "sort", false, "present results largest-first (diff: by bytes saved; inspect: by struct size)")
 	fs.Usage = func() {
 		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
@@ -197,10 +197,16 @@ func (a *App) Run(args []string) int {
 		}
 	}
 
-	if opt.sort && !opt.inspect {
-		sort.SliceStable(allFindings, func(i, j int) bool {
-			return savings(allFindings[i]) > savings(allFindings[j])
-		})
+	if opt.sort {
+		if opt.inspect {
+			sort.SliceStable(allLayouts, func(i, j int) bool {
+				return allLayouts[i].Total > allLayouts[j].Total
+			})
+		} else {
+			sort.SliceStable(allFindings, func(i, j int) bool {
+				return savings(allFindings[i]) > savings(allFindings[j])
+			})
+		}
 	}
 
 	var total int
