@@ -33,6 +33,33 @@ func TestRunCgaEggAccepted(t *testing.T) {
 	assert.NotContains(t, errb.String(), "not defined")
 }
 
+func TestRunGreenAndAmberEggsAccepted(t *testing.T) {
+	for _, egg := range []string{"-green", "-amber"} {
+		var out, errb bytes.Buffer
+		a := themeApp(t, &out, &errb)
+		code := a.Run([]string{egg, "-type=Mixed", "pkg"})
+		assert.Equal(t, 1, code, "%s should be stripped and the run proceed", egg)
+		assert.NotContains(t, errb.String(), "not defined")
+	}
+}
+
+func TestRunValidThemeEnvNoWarning(t *testing.T) {
+	var out, errb bytes.Buffer
+	a := themeApp(t, &out, &errb)
+	t.Setenv("STRUCTALIGN_THEME", "green")
+	a.Run([]string{"-type=Mixed", "pkg"})
+	assert.NotContains(t, errb.String(), "unknown theme", "a valid theme must not warn")
+}
+
+func TestRunDoubleDashStopsEggStripping(t *testing.T) {
+	var out, errb bytes.Buffer
+	a := themeApp(t, &out, &errb)
+	// After "--", args are positional (package) args; the loop's afterDD branch
+	// passes them through untouched.
+	code := a.Run([]string{"-type=Mixed", "--", "pkg"})
+	assert.Equal(t, 1, code)
+}
+
 func TestRunUnknownThemeEnvWarns(t *testing.T) {
 	var out, errb bytes.Buffer
 	a := themeApp(t, &out, &errb)

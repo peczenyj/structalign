@@ -1,6 +1,7 @@
 package ui_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,17 @@ func TestThemeByNameKnown(t *testing.T) {
 func TestThemeByNameUnknown(t *testing.T) {
 	_, ok := ui.ThemeByName("nope")
 	assert.False(t, ok)
+}
+
+// Rendering with a non-default theme set on the Printer must use that theme's
+// codes (exercises Printer.theme()'s "theme is set" branch).
+func TestPrinterUsesSetTheme(t *testing.T) {
+	cga, ok := ui.ThemeByName("cga")
+	assert.True(t, ok)
+	var buf bytes.Buffer
+	p := &ui.Printer{Out: &buf, Color: true, Theme: cga}
+	p.RenderSummary(1, 8)
+	assert.Contains(t, buf.String(), "\x1b[1m\x1b[97m", "cga Label (bold bright white) should be used")
 }
 
 // The green (P1 phosphor) theme is monochrome: it must never use red (31),
