@@ -38,6 +38,15 @@ type Trailing struct { //nolint
 	B int64
 	C bool
 }
+
+type TrailingNamed struct { //nolint:fieldalignment
+	A bool
+	B int64
+	C bool
+}
+
+// A non-struct type declaration the index must skip without panicking.
+type Celsius float64
 `
 
 func findingNames(fs []common.Finding) map[string]bool {
@@ -60,6 +69,7 @@ func TestFindingsRespectNolintByDefault(t *testing.T) {
 	assert.True(t, names["Visible"], "unmarked struct stays")
 	assert.True(t, names["Unrelated"], "//nolint:errcheck must NOT suppress fieldalignment")
 	assert.False(t, names["Trailing"], "a bare //nolint (trailing) must suppress")
+	assert.False(t, names["TrailingNamed"], "a trailing //nolint:fieldalignment must suppress")
 }
 
 func TestFindingsShowNolint(t *testing.T) {
