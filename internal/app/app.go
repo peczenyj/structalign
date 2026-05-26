@@ -153,21 +153,36 @@ func (a *App) Run(args []string) int {
 	filtered := args[:0:0]
 	afterDD := false
 	for _, arg := range args {
-		switch {
-		case afterDD:
+		if afterDD {
 			filtered = append(filtered, arg)
-		case arg == "--":
+			continue
+		}
+		if arg == "--" {
 			afterDD = true
 			filtered = append(filtered, arg)
-		case arg == "-cga" || arg == "--cga":
-			themeName = "cga"
-		case arg == "-green" || arg == "--green":
-			themeName = "green"
-		case arg == "-amber" || arg == "--amber":
-			themeName = "amber"
-		default:
-			filtered = append(filtered, arg)
+			continue
 		}
+
+		// Strip egg flags: -cga/-green/-amber and their -flag=value forms.
+		egg := ""
+		switch {
+		case arg == "-cga" || arg == "--cga" || strings.HasPrefix(arg, "-cga=") || strings.HasPrefix(arg, "--cga="):
+			egg = "cga"
+		case arg == "-green" || arg == "--green" || strings.HasPrefix(arg, "-green=") || strings.HasPrefix(arg, "--green="):
+			egg = "green"
+		case arg == "-amber" || arg == "--amber" || strings.HasPrefix(arg, "-amber=") || strings.HasPrefix(arg, "--amber="):
+			egg = "amber"
+		}
+
+		if egg != "" {
+			if !strings.Contains(arg, "=") {
+				themeName = egg
+			} else if _, val, _ := strings.Cut(arg, "="); val == "true" || val == "1" {
+				themeName = egg
+			}
+			continue
+		}
+		filtered = append(filtered, arg)
 	}
 	args = filtered
 
@@ -230,7 +245,7 @@ func (a *App) Run(args []string) int {
 	var allFindings []common.Finding
 	var allLayouts []common.Layout
 	for _, t := range targets {
-		if excludeRE.MatchString(t.PkgPath) {
+		if opt.exclude != "" && excludeRE.MatchString(t.PkgPath) {
 			continue
 		}
 		for _, e := range t.Errors {
