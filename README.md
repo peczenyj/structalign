@@ -216,6 +216,56 @@ A field can depend on a type parameter indirectly — through a composite or a
 nested generic — and the marker follows it: `map[K]V` reports `-- assume K=any,
 V=any`, and `Inner[V]` reports `-- assume V=any`.
 
+#### Inspecting types you don't own
+
+structalign resolves its package arguments through `go/packages`, so you can
+point `-inspect` (and the diff modes) at types you didn't write — as long as the
+package is reachable from the **current directory's `go.mod`**.
+
+Standard-library structs work out of the box — give the import path and a
+`-type` filter:
+
+```
+$ structalign -inspect -type=Time time
+type Time struct { // size: 24, align: 8, padding: 0
+	wall uint64   // size:  8, align: 8
+	ext int64     // size:  8, align: 8
+	loc *Location // size:  8, align: 8
+}
+```
+
+Dependencies already in your `go.mod` resolve the same way:
+
+```
+$ structalign -inspect -type=Group golang.org/x/sync/errgroup
+type Group struct { // size: 64, align: 8, padding: 4
+	cancel func(error) // size:  8, align: 8
+	wg sync.WaitGroup  // size: 16, align: 8
+	sem chan token     // size:  8, align: 8
+	errOnce sync.Once  // size: 12, align: 4, padding: 4
+	err error          // size: 16, align: 8
+}
+```
+
+Any other library must be *required* by the module you run in — resolution is
+against the current `go.mod`, **not** arbitrary packages sitting in `$GOPATH` or
+the module cache. A package the module doesn't require fails with `no required
+module provides package …`. The quickest way to inspect an arbitrary library is
+a throwaway module:
+
+```sh
+mkdir /tmp/inspect && cd /tmp/inspect
+go mod init scratch
+go get github.com/rs/zerolog
+structalign -inspect -type=Logger github.com/rs/zerolog
+```
+
+Built-in **scalar** types (`int`, `bool`, `string`, …) can't be inspected:
+inspect prints a *struct field layout*, and scalars have no fields. (The
+`builtin` pseudo-package is in the default `-exclude` for the same reason.) To
+see a scalar's size, inspect a struct that contains it — a `string` field shows
+`size: 16` on a 64-bit target.
+
 ### Filtering by type name
 
 `-type` takes a comma-separated list of glob patterns (`path.Match` syntax: `*`,
