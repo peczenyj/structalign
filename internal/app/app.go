@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"sort"
+	"strings"
 
 	"github.com/peczenyj/structalign/internal/align"
 	"github.com/peczenyj/structalign/internal/layout"
@@ -73,6 +74,19 @@ type options struct {
 	summary         bool
 	sort            bool
 	threshold       int
+	showNolint      bool
+	nolintLinters   string
+}
+
+// splitCSV splits a comma-separated list, trimming spaces and dropping empties.
+func splitCSV(s string) []string {
+	var out []string
+	for p := range strings.SplitSeq(s, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
@@ -110,6 +124,8 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.summary, "summary", false, "in diff mode, print a one-line summary after the diffs")
 	fs.BoolVar(&opt.sort, "sort", false, "present results largest-first (diff: by bytes saved; inspect: by struct size)")
 	fs.IntVar(&opt.threshold, "threshold", 0, "in diff mode, only show structs that save at least this many bytes")
+	fs.BoolVar(&opt.showNolint, "show-nolint", false, "show structs even when their type carries a recognized //nolint directive")
+	fs.StringVar(&opt.nolintLinters, "nolint-linters", "fieldalignment", "comma-separated //nolint tokens that suppress a finding (bare //nolint always counts)")
 	fs.Usage = func() {
 		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
@@ -128,6 +144,33 @@ func (a *App) Run(args []string) int {
 			return 2
 		}
 	}
+
+	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
+	// -fix, they are caught before parsing and stripped from args, so they stay
+	// invisible in -help and never trip "flag provided but not defined". Last
+	// one wins; anything after "--" is left untouched (positional args).
+	themeName := ""
+	filtered := args[:0:0]
+	afterDD := false
+	for _, arg := range args {
+		switch {
+		case afterDD:
+			filtered = append(filtered, arg)
+		case arg == "--":
+			afterDD = true
+			filtered = append(filtered, arg)
+		case arg == "-cga" || arg == "--cga":
+			themeName = "cga"
+		case arg == "-green" || arg == "--green":
+			themeName = "green"
+		case arg == "-amber" || arg == "--amber":
+			themeName = "amber"
+		default:
+			filtered = append(filtered, arg)
+		}
+	}
+	args = filtered
+
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -151,10 +194,25 @@ func (a *App) Run(args []string) int {
 		width = ui.ResolveWidth(stdoutFile(a.Stdout))
 	}
 	patterns := match.ParsePatterns(opt.typeFilter)
+
+	// Resolve the theme: egg flag wins over STRUCTALIGN_THEME, else default.
+	if themeName == "" {
+		themeName = os.Getenv("STRUCTALIGN_THEME")
+	}
+	theme := ui.DefaultTheme()
+	if themeName != "" && themeName != "default" {
+		if th, ok := ui.ThemeByName(themeName); ok {
+			theme = th
+		} else {
+			fmt.Fprintf(a.Stderr, "structalign: unknown theme %q, using default\n", themeName)
+		}
+	}
+
 	printer := &ui.Printer{
 		Out:   a.Stdout,
 		Color: ui.WantColor(opt.colorize, stdoutFile(a.Stdout)),
 		Width: width,
+		Theme: theme,
 	}
 
 	ld := a.Loader
@@ -186,6 +244,8 @@ func (a *App) Run(args []string) int {
 			KeepTags:         opt.tags,
 			IncludeGenerated: opt.generated,
 			SkipCachePadded:  opt.skipCachePadded,
+			RespectNolint:    !opt.showNolint,
+			NolintLinters:    splitCSV(opt.nolintLinters),
 		}
 		if opt.inspect {
 			allLayouts = append(allLayouts, a.Inspector.Layouts(t, o)...)
