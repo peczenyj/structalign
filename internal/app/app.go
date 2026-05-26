@@ -72,6 +72,7 @@ type options struct {
 	skipCachePadded bool
 	summary         bool
 	sort            bool
+	threshold       int
 }
 
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
@@ -108,6 +109,7 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.skipCachePadded, "skip-cache-padded", false, "skip structs containing a golang.org/x/sys/cpu.CacheLinePad field")
 	fs.BoolVar(&opt.summary, "summary", false, "in diff mode, print a one-line summary after the diffs")
 	fs.BoolVar(&opt.sort, "sort", false, "present results largest-first (diff: by bytes saved; inspect: by struct size)")
+	fs.IntVar(&opt.threshold, "threshold", 0, "in diff mode, only show structs that save at least this many bytes")
 	fs.Usage = func() {
 		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
 		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
@@ -195,6 +197,17 @@ func (a *App) Run(args []string) int {
 			}
 			allFindings = append(allFindings, findings...)
 		}
+	}
+
+	if !opt.inspect && opt.threshold > 0 {
+		min := int64(opt.threshold)
+		kept := allFindings[:0]
+		for _, f := range allFindings {
+			if savings(f) >= min {
+				kept = append(kept, f)
+			}
+		}
+		allFindings = kept
 	}
 
 	if opt.sort {
