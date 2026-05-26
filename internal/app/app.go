@@ -153,7 +153,8 @@ func (a *App) Run(args []string) int {
 	}
 	sort.Slice(targets, func(i, j int) bool { return targets[i].PkgPath < targets[j].PkgPath })
 
-	total := 0
+	var allFindings []common.Finding
+	var allLayouts []common.Layout
 	for _, t := range targets {
 		if excludeRE.MatchString(t.PkgPath) {
 			continue
@@ -171,15 +172,22 @@ func (a *App) Run(args []string) int {
 			SkipCachePadded:  opt.skipCachePadded,
 		}
 		if opt.inspect {
-			total += printer.RenderLayouts(a.Inspector.Layouts(t, o), opt.verbose, opt.tags)
+			allLayouts = append(allLayouts, a.Inspector.Layouts(t, o)...)
 		} else {
 			findings, ferr := a.Aligner.Findings(t, o)
 			if ferr != nil {
 				fmt.Fprintf(a.Stderr, "structalign: %s: %v\n", t.PkgPath, ferr)
 				continue
 			}
-			total += printer.RenderFindings(findings, opt.diff)
+			allFindings = append(allFindings, findings...)
 		}
+	}
+
+	var total int
+	if opt.inspect {
+		total = printer.RenderLayouts(allLayouts, opt.verbose, opt.tags)
+	} else {
+		total = printer.RenderFindings(allFindings, opt.diff)
 	}
 
 	if total == 0 {
