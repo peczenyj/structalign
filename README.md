@@ -1,5 +1,6 @@
 # structalign
 
+[![Latest release](https://img.shields.io/github/release/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.25-%23007d9c)
 [![GoDoc](https://pkg.go.dev/badge/github.com/peczenyj/structalign)](http://pkg.go.dev/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
@@ -8,7 +9,6 @@
 [![CodeQL](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql)
 [![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
 [![License](https://img.shields.io/github/license/peczenyj/structalign)](./LICENSE)
-[![Latest release](https://img.shields.io/github/release/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![GitHub Release Date](https://img.shields.io/github/release-date/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
