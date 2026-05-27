@@ -11,40 +11,75 @@ import (
 	"strings"
 
 	"github.com/mattn/go-runewidth"
+	"github.com/muesli/termenv"
 
 	"github.com/peczenyj/structalign/internal/textdiff"
 	"github.com/peczenyj/structalign/pkg/common"
 )
 
-const (
-	cReset = "\x1b[0m"
-	cRed   = "\x1b[31m"
-	cGreen = "\x1b[32m"
-	cCyan  = "\x1b[36m"
-	cDim   = "\x1b[2m"
-	cBold  = "\x1b[1m"
-)
+// styleFactory generates the SGR sequences for every style; termenv owns escape
+// generation so we no longer hand-assemble ANSI strings. The profile is fixed at
+// ANSI256 (not detected from the terminal) to reproduce the historical output:
+// the 16-color roles render as their plain SGR codes and the amber palette keeps
+// its 256-color (38;5;214) sequence, which the narrower ANSI profile would
+// downsample to bright yellow. The io.Discard writer is irrelevant — with a
+// forced profile the factory is used only to render strings, never to write.
+var styleFactory = termenv.NewOutput(io.Discard, termenv.WithProfile(termenv.ANSI256))
 
-// Theme maps semantic roles to ANSI SGR sequences. The zero value resolves to
-// DefaultTheme (see Printer.theme), which reproduces the historical palette.
-type Theme struct {
-	Header  string // finding header / inspect "type X struct {" line
-	Added   string // "+" diff lines / added side cells
-	Removed string // "-" diff lines / removed side cells
-	Meta    string // column titles, divider, layout note, "-- assume" marker
-	Padding string // inspect padding comment / "_" padding line
-	Label   string // the -summary "Summary:" label
+// Style is the appearance of one semantic role: an optional foreground color
+// plus attributes. The zero value is "no styling" and renders text unchanged.
+type Style struct {
+	fg      termenv.Color // nil = default foreground
+	bold    bool
+	faint   bool
+	reverse bool
 }
 
-// DefaultTheme is the byte-for-byte historical palette.
+// render wraps text in the style's SGR sequence (via termenv). Attributes are
+// applied before the color so the combined sequence reads bold/faint/reverse
+// then foreground (e.g. "\x1b[1;36m" for bold cyan).
+func (s Style) render(text string) string {
+	if s == (Style{}) {
+		return text
+	}
+	st := styleFactory.String(text)
+	if s.bold {
+		st = st.Bold()
+	}
+	if s.faint {
+		st = st.Faint()
+	}
+	if s.reverse {
+		st = st.Reverse()
+	}
+	if s.fg != nil {
+		st = st.Foreground(s.fg)
+	}
+	return st.String()
+}
+
+// Theme maps semantic roles to styles. The zero value resolves to DefaultTheme
+// (see Printer.theme), which reproduces the historical palette.
+type Theme struct {
+	Header  Style // finding header / inspect "type X struct {" line
+	Added   Style // "+" diff lines / added side cells
+	Removed Style // "-" diff lines / removed side cells
+	Meta    Style // column titles, divider, layout note, "-- assume" marker
+	Padding Style // inspect padding comment / "_" padding line
+	Label   Style // the -summary "Summary:" label
+}
+
+// DefaultTheme is the historical palette: bold cyan header, green added, red
+// removed/padding, dim meta, bold label. termenv renders these as the same
+// visual output the hand-rolled SGR constants produced.
 func DefaultTheme() Theme {
 	return Theme{
-		Header:  cBold + cCyan,
-		Added:   cGreen,
-		Removed: cRed,
-		Meta:    cDim,
-		Padding: cRed,
-		Label:   cBold,
+		Header:  Style{fg: termenv.ANSICyan, bold: true},
+		Added:   Style{fg: termenv.ANSIGreen},
+		Removed: Style{fg: termenv.ANSIRed},
+		Meta:    Style{faint: true},
+		Padding: Style{fg: termenv.ANSIRed},
+		Label:   Style{bold: true},
 	}
 }
 
@@ -84,7 +119,7 @@ func (p *Printer) RenderLayouts(layouts []common.Layout, verbose, keepTags bool)
 // label is bold when color is on; counts are pluralized.
 func (p *Printer) RenderSummary(structs int, bytesSaved int64) {
 	fmt.Fprintf(p.Out, "%s %d %s affected, %d %s saved total\n", //nolint:errcheck
-		paint(p.Color, p.theme().Label, "Summary:"),
+		p.paint(p.theme().Label, "Summary:"),
 		structs, plural(int64(structs), "struct", "structs"),
 		bytesSaved, plural(bytesSaved, "byte", "bytes"))
 }
@@ -110,7 +145,7 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 		pct := float64(f.OldSize-f.NewSize) / float64(f.OldSize) * 100
 		header += fmt.Sprintf(" (%02.2f%% smaller)", pct)
 	}
-	fmt.Fprintln(p.Out, paint(p.Color, p.theme().Header, header)) //nolint:errcheck
+	fmt.Fprintln(p.Out, p.paint(p.theme().Header, header)) //nolint:errcheck
 
 	if f.Original == "" || f.Proposed == "" {
 		fmt.Fprintln(p.Out, "  (no suggested fix produced)") //nolint:errcheck
@@ -145,9 +180,9 @@ func (p *Printer) renderUnified(a, b string) {
 		case textdiff.Equal:
 			fmt.Fprintf(p.Out, "  %s\n", op.Text) //nolint:errcheck
 		case textdiff.Del:
-			fmt.Fprintln(p.Out, paint(p.Color, th.Removed, "- "+op.Text)) //nolint:errcheck
+			fmt.Fprintln(p.Out, p.paint(th.Removed, "- "+op.Text)) //nolint:errcheck
 		case textdiff.Add:
-			fmt.Fprintln(p.Out, paint(p.Color, th.Added, "+ "+op.Text)) //nolint:errcheck
+			fmt.Fprintln(p.Out, p.paint(th.Added, "+ "+op.Text)) //nolint:errcheck
 		}
 	}
 }
@@ -158,10 +193,10 @@ func (p *Printer) renderSideBySide(a, b string) {
 	bl := strings.Split(b, "\n")
 	ops := textdiff.Lines(al, bl)
 
-	// Build aligned rows.
+	// Build aligned rows. lc/rc are the per-side styles (zero Style = no color).
 	type row struct {
 		l, r   string
-		lc, rc string
+		lc, rc Style
 	}
 	var rows []row
 	i := 0
@@ -169,7 +204,7 @@ func (p *Printer) renderSideBySide(a, b string) {
 		op := ops[i]
 		switch op.Kind {
 		case textdiff.Equal:
-			rows = append(rows, row{op.Text, op.Text, "", ""})
+			rows = append(rows, row{l: op.Text, r: op.Text})
 			i++
 		case textdiff.Del:
 			// gather a run of deletions, then a run of additions, and zip them
@@ -185,7 +220,7 @@ func (p *Printer) renderSideBySide(a, b string) {
 			n := max(len(dels), len(adds))
 			for k := range n {
 				var l, r string
-				var lc, rc string
+				var lc, rc Style
 				if k < len(dels) {
 					l, lc = dels[k], th.Removed
 				}
@@ -195,7 +230,7 @@ func (p *Printer) renderSideBySide(a, b string) {
 				rows = append(rows, row{l, r, lc, rc})
 			}
 		case textdiff.Add:
-			rows = append(rows, row{"", op.Text, "", th.Added})
+			rows = append(rows, row{r: op.Text, rc: th.Added})
 			i++
 		}
 	}
@@ -205,21 +240,21 @@ func (p *Printer) renderSideBySide(a, b string) {
 	// rows: each side is `width` columns, joined by sep (" │ "). The divider
 	// mirrors sep as "─┼─" so the ┼ lands directly under every │.
 	// Pad the header text manually (not via %-*s) so it stays correct even
-	// when paint() wraps it in ANSI escapes, which %-*s would miscount.
+	// when paint wraps it in ANSI escapes, which %-*s would miscount.
 	fmt.Fprintf(p.Out, "  %s%s%s\n", //nolint:errcheck
-		paint(p.Color, th.Meta, truncPad("current", p.Width)),
+		p.paint(th.Meta, truncPad("current", p.Width)),
 		sep,
-		paint(p.Color, th.Meta, "proposed"))
-	fmt.Fprintf(p.Out, "  %s\n", paint(p.Color, th.Meta, //nolint:errcheck
+		p.paint(th.Meta, "proposed"))
+	fmt.Fprintf(p.Out, "  %s\n", p.paint(th.Meta, //nolint:errcheck
 		strings.Repeat("─", p.Width)+"─┼─"+strings.Repeat("─", p.Width)))
 	for _, r := range rows {
 		left := truncPad(r.l, p.Width)
 		right := truncPad(r.r, p.Width)
-		if r.lc != "" {
-			left = paint(p.Color, r.lc, left)
+		if r.lc != (Style{}) {
+			left = p.paint(r.lc, left)
 		}
-		if r.rc != "" {
-			right = paint(p.Color, r.rc, right)
+		if r.rc != (Style{}) {
+			right = p.paint(r.rc, right)
 		}
 		fmt.Fprintf(p.Out, "  %s%s%s\n", left, sep, right) //nolint:errcheck
 	}
@@ -244,13 +279,13 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 
 	// Optional caveat (e.g. the generic-type disclaimer) above the declaration.
 	if l.Note != "" {
-		fmt.Fprintln(p.Out, paint(p.Color, th.Meta, "// "+l.Note)) //nolint:errcheck
+		fmt.Fprintln(p.Out, p.paint(th.Meta, "// "+l.Note)) //nolint:errcheck
 	}
 
 	// Header: the struct opening line carries size/align/padding.
 	header := fmt.Sprintf("type %s%s struct { // size: %d, align: %d, padding: %d",
 		l.Name, l.TypeParams, l.Total, l.Align, l.Padding)
-	fmt.Fprintln(p.Out, paint(p.Color, th.Header, header)) //nolint:errcheck
+	fmt.Fprintln(p.Out, p.paint(th.Header, header)) //nolint:errcheck
 
 	comments, commentWidth := layoutComments(l.Fields, verbose)
 
@@ -258,18 +293,18 @@ func (p *Printer) renderLayout(l common.Layout, verbose, keepTags bool) {
 		comment := comments[i]
 		rendered := comment
 		if !verbose && f.Padding > 0 {
-			rendered = paint(p.Color, th.Padding, comment)
+			rendered = p.paint(th.Padding, comment)
 		}
 		line := fmt.Sprintf("\t%-*s // %s", declWidth, decls[i], rendered)
 		if f.Assume != "" {
 			pad := strings.Repeat(" ", commentWidth-len(comment))
-			line += pad + "   " + paint(p.Color, th.Meta, "-- assume "+f.Assume)
+			line += pad + "   " + p.paint(th.Meta, "-- assume "+f.Assume)
 		}
 		fmt.Fprintln(p.Out, line) //nolint:errcheck
 		if verbose && f.Padding > 0 {
 			// Field line carries no padding; padding gets its own `_` line.
 			pad := fmt.Sprintf("\t%-*s // %d byte padding", declWidth, "_", f.Padding)
-			fmt.Fprintln(p.Out, paint(p.Color, th.Padding, pad)) //nolint:errcheck
+			fmt.Fprintln(p.Out, p.paint(th.Padding, pad)) //nolint:errcheck
 		}
 	}
 	fmt.Fprintln(p.Out, "}") //nolint:errcheck
@@ -355,11 +390,12 @@ func truncPad(s string, w int) string {
 	return b.String() + strings.Repeat(" ", w-width)
 }
 
-func paint(on bool, code, s string) string {
-	if !on {
+// paint renders s in role's style when color is enabled, else returns s plain.
+func (p *Printer) paint(role Style, s string) string {
+	if !p.Color {
 		return s
 	}
-	return code + s + cReset
+	return role.render(s)
 }
 
 // relPath shortens an absolute filename (go/packages reports absolute paths) to
