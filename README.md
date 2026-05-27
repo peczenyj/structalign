@@ -478,9 +478,6 @@ task release TAG=v0.1.0        # stamp the changelog for a release
   original struct field-alignment detector, since superseded by `fieldalignment`.
 - [**structslop**](https://github.com/orijtech/structslop) by orijtech — suggests
   struct field rearrangements to reduce memory footprint.
-- [**structlayout**](https://github.com/dominikh/go-tools/tree/master/cmd/structlayout)
-  by Dominik Honnef — prints a struct's in-memory layout; the inspiration for
-  `-inspect`.
 
 ## Contributing
 
