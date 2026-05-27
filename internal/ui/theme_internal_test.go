@@ -49,6 +49,8 @@ func TestCgaThemeIsDistinctFromDefault(t *testing.T) {
 	assert.Contains(t, cga.Removed.render("X"), "93", "cga removed is bright yellow")
 	assert.NotContains(t, cga.Removed.render("X"), "31", "cga must not reuse the default red")
 	assert.NotContains(t, cga.Removed.render("X"), "95", "magenta is reserved for the header bar")
+	// Inspect padding shares the removed yellow rather than flat white.
+	assert.Contains(t, cga.Padding.render("X"), "93", "cga inspect padding is bright yellow, matching removed")
 }
 
 // The green (P1 phosphor) theme is monochrome: it must never use red (31),
