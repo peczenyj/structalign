@@ -70,12 +70,20 @@ $ echo $?
 
 ## Why it exists
 
-`golang.org/x/tools/.../fieldalignment` has exactly two modes:
+`golang.org/x/tools/.../fieldalignment` is built to **act on** your code, not to
+help you read the change:
 
-- **report** — prints a terse message like `struct of size 24 could be 16` and nothing else;
-- **`-fix`** — silently rewrites your source.
+- **report** (default) — prints a terse message like `struct of size 24 could be 16` and nothing else;
+- **`-fix`** — silently rewrites your source in place.
 
-The analysis driver can emit a diff — but only as -fix -diff together, producing a unified patch meant for patch/git apply, not a mode for reviewing the change. There was no readable “show me the proposed struct” view, and no way to inspect a struct’s layout. structalign fills both gaps: a review-oriented diff (side-by-side, color, summary, threshold, tag-stripping) and a per-field layout inspector.
+The analysis driver *can* produce a diff — `fieldalignment -fix -diff` emits a
+unified patch — but that patch is built for `patch`/`git apply`, not for a human
+to read: it answers "how do I apply this change?", not "what would the optimal
+struct look like, and is the saving worth it?" There was no read-only "show me
+the proposed struct" view, and no way to inspect a struct's layout at all.
+`structalign` fills both gaps with output meant for people: a review-oriented
+diff (unified or side-by-side, with color, summary, threshold, and tag-stripping)
+and a per-field layout inspector.
 
 | | report a problem | show the diff | rewrite files | inspect layout | CI-friendly exit code |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -84,7 +92,10 @@ The analysis driver can emit a diff — but only as -fix -diff together, produci
 | `structlayout`          | ❌ | ❌ | ❌ | ✅ | ❌ |
 | **structalign**         | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-† Only via `-fix -diff` together: the analysis driver emits a unified patch for `patch`/`git apply`, not human-oriented review output. structalign's diff is read-only and standalone (side-by-side, color, summary, tag-stripping).
+† Only via `-fix -diff` together, and only as a machine-applicable unified patch
+for `patch`/`git apply` — never as standalone, human-oriented review output.
+structalign's diff is read-only by design: it shows the proposed struct, it does
+not edit (or stage edits to) your files.
 
 ## Usage
 
@@ -461,7 +472,3 @@ conventions, and the release process.
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
-
-## Foo
-
-bar
