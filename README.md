@@ -103,6 +103,28 @@ per-field layout inspector.
 
 ## Usage
 
+`structalign` is a read-only companion to
+[`fieldalignment`](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/fieldalignment):
+it prints the reordered struct plus a diff (or, with `-inspect`, a struct's
+memory layout) for review, and never edits files. The analysis matches
+`fieldalignment` exactly; for an in-place rewrite, use `fieldalignment -fix`.
+
+`packages` are whatever the go tool understands: `./...`, import paths,
+directories, or single `.go` files. Generated and `_test.go` files are skipped
+unless `-generated` / `-tests` are given; only named structs are considered (a
+non-empty `-type` also skips anonymous structs and struct literals).
+
+In diff mode `structalign` exits **1 when any reordering is found** and **0
+otherwise**, so it drops into CI as a check; `-inspect` always exits 0. Note the
+most compact ordering is not always the most efficient — beware false sharing
+(see `-skip-cache-padded`).
+
+```sh
+structalign ./...                          # scan every package in the module
+structalign -diff=side -summary ./...      # side-by-side diff plus a total
+structalign -inspect -type=Config ./pkg    # one struct's per-field layout
+```
+
 ```
 structalign [flags] [packages]
 
@@ -149,9 +171,6 @@ with a reverse-video header bar), or `green` / `amber` (single-hue phosphor-moni
 emulations). It only affects *which* colors
 are used when color is on; it does not turn color on by itself. An unknown value
 warns and falls back to `default`.
-
-Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
-CI as a check. Inspect mode is informational and always exits 0.
 
 ## Modes
 
