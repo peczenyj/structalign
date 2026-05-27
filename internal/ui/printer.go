@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mattn/go-runewidth"
+
 	"github.com/peczenyj/structalign/internal/textdiff"
 	"github.com/peczenyj/structalign/pkg/common"
 )
