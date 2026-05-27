@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-05-27
+
+### Added
+
+- Enrich -h into man-page-style help (#52)
+- Report bytes saved in the diff header (#57)
+
+### Changed
+
+- Update README.md
+- Update README.md
+- Update .gitignore
+- Replace hand-rolled ANSI with termenv (color engine) (#54)
+
+### Fixed
+
+- Address bugs in nolint parsing, unicode alignment, and flag stripping (#50)
+- *(cga)* Inspect padding shares the removed yellow, not flat white (#59)
+
+### Documentation
+
+- Clarify fieldalignment can diff but structalign is human-readable (#45)
+
 ## [0.6.0] - 2026-05-26
 
 ### Added
@@ -159,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.6.1]: https://github.com/peczenyj/structalign/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/peczenyj/structalign/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/peczenyj/structalign/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/peczenyj/structalign/compare/v0.5.0..v0.5.1
