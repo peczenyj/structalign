@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/peczenyj/structalign/internal/textdiff"
 	"github.com/peczenyj/structalign/pkg/common"
 )
@@ -326,7 +327,7 @@ func truncPad(s string, w int) string {
 	runes := []rune(s)
 	width := 0
 	for i, r := range runes {
-		rw := runeWidth(r)
+		rw := runewidth.RuneWidth(r)
 		if width+rw > w {
 			// No room for this rune. Try to fit an ellipsis.
 			if w <= 0 {
@@ -338,7 +339,7 @@ func truncPad(s string, w int) string {
 			}
 			// Back up until we have room for "…".
 			for j := i; j >= 0; j-- {
-				if visualWidth(runes[:j])+1 <= w {
+				if runewidth.StringWidth(string(runes[:j]))+1 <= w {
 					return string(runes[:j]) + "…"
 				}
 			}
@@ -347,37 +348,6 @@ func truncPad(s string, w int) string {
 		width += rw
 	}
 	return s + strings.Repeat(" ", w-width)
-}
-
-// visualWidth returns the total visual width of a rune slice.
-func visualWidth(runes []rune) int {
-	w := 0
-	for _, r := range runes {
-		w += runeWidth(r)
-	}
-	return w
-}
-
-// runeWidth returns the visual width of a rune. It's a best-effort approximation
-// for CJK characters (2 columns) vs others (1 column).
-//
-//nolint:gocyclo // best-effort CJK detection naturally involves many ranges
-func runeWidth(r rune) int {
-	if r >= 0x1100 &&
-		(r <= 0x115f || // Hangul Jamo
-			r == 0x2329 || r == 0x232a ||
-			(r >= 0x2e80 && r <= 0xa4cf && r != 0x303f) || // CJK ... Yi
-			(r >= 0xac00 && r <= 0xd7a3) || // Hangul Syllables
-			(r >= 0xf900 && r <= 0xfaff) || // CJK Compatibility Ideographs
-			(r >= 0xfe10 && r <= 0xfe19) || // Vertical forms
-			(r >= 0xfe30 && r <= 0xfe6f) || // CJK Compatibility Forms
-			(r >= 0xff00 && r <= 0xff60) || // Fullwidth Forms
-			(r >= 0xffe0 && r <= 0xffe6) ||
-			(r >= 0x20000 && r <= 0x2fffd) ||
-			(r >= 0x30000 && r <= 0x3fffd)) {
-		return 2
-	}
-	return 1
 }
 
 func paint(on bool, code, s string) string {
