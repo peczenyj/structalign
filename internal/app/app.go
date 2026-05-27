@@ -137,36 +137,7 @@ func (a *App) Run(args []string) int {
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
 	// invisible in -help and never trip "flag provided but not defined".
-	themeName := ""
-	filtered := args[:0:0]
-	afterDD := false
-	for _, arg := range args {
-		if afterDD || arg == "--" {
-			afterDD = true
-			filtered = append(filtered, arg)
-			continue
-		}
-
-		// Strip egg flags: -cga/-green/-amber and their -flag=value forms.
-		egg := ""
-		for _, name := range []string{"cga", "green", "amber"} {
-			if arg == "-"+name || arg == "--"+name || strings.HasPrefix(arg, "-"+name+"=") || strings.HasPrefix(arg, "--"+name+"=") {
-				egg = name
-				break
-			}
-		}
-
-		if egg != "" {
-			if !strings.Contains(arg, "=") {
-				themeName = egg
-			} else if _, val, _ := strings.Cut(arg, "="); val == "true" || val == "1" {
-				themeName = egg
-			}
-			continue
-		}
-		filtered = append(filtered, arg)
-	}
-	args = filtered
+	themeName, args := a.stripEggFlags(args)
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -303,6 +274,35 @@ func (a *App) Run(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
+
+// stripEggFlags scans args for retro-theme "easter egg" flags, returning the
+// chosen theme name and the args slice with those flags removed. It stops at
+// the first "--" separator.
+func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
+	filtered = args[:0:0]
+	afterDD := false
+	for _, arg := range args {
+		if afterDD || arg == "--" {
+			afterDD = true
+			filtered = append(filtered, arg)
+			continue
+		}
+
+		if m := eggRE.FindStringSubmatch(arg); m != nil {
+			name, val := m[1], m[2]
+			if name == "cga" || name == "green" || name == "amber" {
+				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
+					theme = name
+				}
+				continue
+			}
+		}
+		filtered = append(filtered, arg)
+	}
+	return theme, filtered
 }
 
 // stdoutFile returns the *os.File behind w for terminal queries, or nil when
