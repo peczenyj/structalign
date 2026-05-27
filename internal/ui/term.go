@@ -13,7 +13,8 @@ import (
 // the environment. In "auto" mode it honors NO_COLOR (https://no-color.org); an
 // explicit -color=always still wins, per that convention.
 func WantColor(colorize common.Colorize, out *os.File) bool {
-	return wantColor(colorize, os.Getenv("NO_COLOR") != "", isCharDevice(out))
+	isTTY := out != nil && isCharDevice(out)
+	return wantColor(colorize, os.Getenv("NO_COLOR") != "", isTTY)
 }
 
 // wantColor is the pure decision: "always" forces color on, "never" forces it
@@ -30,6 +31,9 @@ func wantColor(colorize common.Colorize, noColor, isTTY bool) bool {
 }
 
 func isCharDevice(out *os.File) bool {
+	if out == nil {
+		return false
+	}
 	fi, err := out.Stat()
 	if err != nil {
 		return false
@@ -52,12 +56,14 @@ func ResolveWidth(out *os.File) int {
 		}
 		return (cols - overhead) / 2, true
 	}
-	if cols, _, err := term.GetSize(int(out.Fd())); err == nil {
-		if w, ok := fromCols(cols); ok {
-			return w
-		}
-		if cols >= overhead+2 {
-			return minWidth
+	if out != nil {
+		if cols, _, err := term.GetSize(int(out.Fd())); err == nil {
+			if w, ok := fromCols(cols); ok {
+				return w
+			}
+			if cols >= overhead+2 {
+				return minWidth
+			}
 		}
 	}
 	if c, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil {

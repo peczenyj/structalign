@@ -78,17 +78,6 @@ type options struct {
 	nolintLinters   string
 }
 
-// splitCSV splits a comma-separated list, trimming spaces and dropping empties.
-func splitCSV(s string) []string {
-	var out []string
-	for p := range strings.SplitSeq(s, ",") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
 // the proposed layout is not smaller. Shared by -summary (and, later, -sort and
 // -threshold).
@@ -127,8 +116,26 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.showNolint, "show-nolint", false, "show structs even when their type carries a recognized //nolint directive")
 	fs.StringVar(&opt.nolintLinters, "nolint-linters", "fieldalignment", "comma-separated //nolint tokens that suppress a finding (bare //nolint always counts)")
 	fs.Usage = func() {
-		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
-		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
+		fmt.Fprint(a.Stderr, //nolint:errcheck
+			"structalign: show how a struct's fields could be reordered to use less memory\n\n",
+			"usage: structalign [flags] [packages]\n\n",
+			"structalign is a read-only companion to fieldalignment: it prints the\n",
+			"reordered struct plus a diff (or, with -inspect, a struct's memory layout)\n",
+			"for review, and never edits files. The analysis matches fieldalignment\n",
+			"exactly; for an in-place rewrite, use fieldalignment itself.\n\n",
+			"packages are whatever the go tool understands: ./..., import paths,\n",
+			"directories, or single .go files. Generated and _test.go files are skipped\n",
+			"unless -generated / -tests are given; only named structs are considered (a\n",
+			"non-empty -type also skips anonymous structs and struct literals).\n\n",
+			"In diff mode structalign exits 1 when any reordering is found and 0\n",
+			"otherwise, so it can gate CI; -inspect always exits 0. Note the most\n",
+			"compact ordering is not always the most efficient — beware false sharing\n",
+			"(see -skip-cache-padded).\n\n",
+			"examples:\n",
+			"  structalign ./...                          scan every package in the module\n",
+			"  structalign -diff=side -summary ./...      side-by-side diff plus a total\n",
+			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n\n",
+			"flags:\n")
 		fs.PrintDefaults()
 	}
 	// Easter egg: fieldalignment has -fix; structalign deliberately only prints
@@ -147,44 +154,8 @@ func (a *App) Run(args []string) int {
 
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
-	// invisible in -help and never trip "flag provided but not defined". Last
-	// one wins; anything after "--" is left untouched (positional args).
-	themeName := ""
-	filtered := args[:0:0]
-	afterDD := false
-	for _, arg := range args {
-		if afterDD {
-			filtered = append(filtered, arg)
-			continue
-		}
-		if arg == "--" {
-			afterDD = true
-			filtered = append(filtered, arg)
-			continue
-		}
-
-		// Strip egg flags: -cga/-green/-amber and their -flag=value forms.
-		egg := ""
-		switch {
-		case arg == "-cga" || arg == "--cga" || strings.HasPrefix(arg, "-cga=") || strings.HasPrefix(arg, "--cga="):
-			egg = "cga"
-		case arg == "-green" || arg == "--green" || strings.HasPrefix(arg, "-green=") || strings.HasPrefix(arg, "--green="):
-			egg = "green"
-		case arg == "-amber" || arg == "--amber" || strings.HasPrefix(arg, "-amber=") || strings.HasPrefix(arg, "--amber="):
-			egg = "amber"
-		}
-
-		if egg != "" {
-			if !strings.Contains(arg, "=") {
-				themeName = egg
-			} else if _, val, _ := strings.Cut(arg, "="); val == "true" || val == "1" {
-				themeName = egg
-			}
-			continue
-		}
-		filtered = append(filtered, arg)
-	}
-	args = filtered
+	// invisible in -help and never trip "flag provided but not defined".
+	themeName, args := a.stripEggFlags(args)
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -260,7 +231,7 @@ func (a *App) Run(args []string) int {
 			IncludeGenerated: opt.generated,
 			SkipCachePadded:  opt.skipCachePadded,
 			RespectNolint:    !opt.showNolint,
-			NolintLinters:    splitCSV(opt.nolintLinters),
+			NolintLinters:    match.SplitCSV(opt.nolintLinters),
 		}
 		if opt.inspect {
 			allLayouts = append(allLayouts, a.Inspector.Layouts(t, o)...)
@@ -323,12 +294,41 @@ func (a *App) Run(args []string) int {
 	return 0
 }
 
-// stdoutFile returns the *os.File behind w for terminal queries, or os.Stdout as
-// a harmless fallback when w is not a file (e.g. a test buffer); WantColor and
-// ResolveWidth both degrade gracefully in that case.
+var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
+
+// stripEggFlags scans args for retro-theme "easter egg" flags, returning the
+// chosen theme name and the args slice with those flags removed. It stops at
+// the first "--" separator.
+func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
+	filtered = args[:0:0]
+	afterDD := false
+	for _, arg := range args {
+		if afterDD || arg == "--" {
+			afterDD = true
+			filtered = append(filtered, arg)
+			continue
+		}
+
+		if m := eggRE.FindStringSubmatch(arg); m != nil {
+			name, val := m[1], m[2]
+			if name == "cga" || name == "green" || name == "amber" {
+				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
+					theme = name
+				}
+				continue
+			}
+		}
+		filtered = append(filtered, arg)
+	}
+	return theme, filtered
+}
+
+// stdoutFile returns the *os.File behind w for terminal queries, or nil when
+// w is not a file (e.g. a test buffer); WantColor and ResolveWidth both
+// handle nil by falling back to safe defaults (no color, 80-column width).
 func stdoutFile(w io.Writer) *os.File {
 	if f, ok := w.(*os.File); ok {
 		return f
 	}
-	return os.Stdout
+	return nil
 }

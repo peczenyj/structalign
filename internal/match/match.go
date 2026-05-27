@@ -7,9 +7,8 @@ import (
 	"strings"
 )
 
-// ParsePatterns splits a comma-separated value into trimmed, non-empty glob
-// patterns. Empty input yields nil (meaning "match everything").
-func ParsePatterns(s string) []string {
+// SplitCSV splits a comma-separated list, trimming spaces and dropping empties.
+func SplitCSV(s string) []string {
 	var out []string
 	for p := range strings.SplitSeq(s, ",") {
 		if p = strings.TrimSpace(p); p != "" {
@@ -17,6 +16,12 @@ func ParsePatterns(s string) []string {
 		}
 	}
 	return out
+}
+
+// ParsePatterns splits a comma-separated value into trimmed, non-empty glob
+// patterns. Empty input yields nil (meaning "match everything").
+func ParsePatterns(s string) []string {
+	return SplitCSV(s)
 }
 
 // MatchAny reports whether name matches any glob pattern (path.Match syntax).

@@ -15,5 +15,37 @@ coverage.html
 # GoReleaser output
 /dist/
 
+# misc
+.coverage.*
+.test_report.xml
+.*.md
+*~
+*.bak
+*.old
+/build/
+/builds/
+/tmp/
+.local
+.env
+.env.*
+.cache
+.vscode
+.idea
+
+# Don't store go.work and go.work.sum files.
+go.work
+go.work.sum
+
+# AI coding tools — local/personal only
+
+# Claude Code
+.claude/settings.local.json
+.claude/agent-memory-local/
+.claude/worktrees/
+.claude/CLAUDE.md
+
+# Gemini CLI
+.gemini/settings.json
+
 # AI planning docs (local only)
 /docs/superpowers/

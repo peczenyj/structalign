@@ -55,3 +55,18 @@ func TestResolveWidth(t *testing.T) {
 	t.Setenv("COLUMNS", "120")
 	assert.Equal(t, 57, ui.ResolveWidth(w), "(120-5)/2 = 57")
 }
+
+// When the output writer is not an *os.File, stdoutFile passes nil here. Both
+// helpers must treat nil as "no terminal" rather than dereferencing it.
+func TestWantColorNilFile(t *testing.T) {
+	assert.False(t, ui.WantColor(common.ColorizeAuto, nil), "nil output is not a terminal")
+	assert.True(t, ui.WantColor(common.ColorizeAlways, nil), "always wins even for nil output")
+}
+
+func TestResolveWidthNilFile(t *testing.T) {
+	t.Setenv("COLUMNS", "")
+	assert.Equal(t, 80, ui.ResolveWidth(nil), "nil output, no COLUMNS -> fallback 80")
+
+	t.Setenv("COLUMNS", "120")
+	assert.Equal(t, 57, ui.ResolveWidth(nil), "nil output still honors COLUMNS")
+}

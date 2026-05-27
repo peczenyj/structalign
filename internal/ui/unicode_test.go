@@ -20,3 +20,16 @@ func TestTruncPadUnicode(t *testing.T) {
 	assert.Equal(t, "short     ", res2)
 	assert.Equal(t, 10, len(res2))
 }
+
+// truncPad must measure display width, not rune count: CJK ideographs are two
+// cells wide. A rune-count implementation would mis-pad and overflow the
+// column; these cases lock in the width-aware behavior.
+func TestTruncPadWideRunes(t *testing.T) {
+	// "世界" is 2 runes but 4 display cells. No truncation needed at width 6,
+	// so it pads by the remaining 2 cells (not 4 as a rune count would give).
+	assert.Equal(t, "世界  ", truncPad("世界", 6))
+
+	// "世界世" is 6 cells; at width 5 it truncates after the second wide rune,
+	// landing exactly on the column with the ellipsis ("世界" = 4 + "…" = 5).
+	assert.Equal(t, "世界…", truncPad("世界世", 5))
+}

@@ -109,6 +109,14 @@ func parseNolint(text string, info *nolintInfo) {
 	case strings.HasPrefix(text, "/*") && strings.HasSuffix(text, "*/"):
 		text = strings.TrimPrefix(text, "/*")
 		text = strings.TrimSuffix(text, "*/")
+		// For block comments, also strip leading '*' and whitespace from each
+		// line (e.g. standard "/* * nolint */" or multiline forms).
+		lines := strings.Split(text, "\n")
+		for i, ln := range lines {
+			ln = strings.TrimSpace(ln)
+			lines[i] = strings.TrimPrefix(ln, "*")
+		}
+		text = strings.Join(lines, " ")
 	default:
 		return
 	}
@@ -121,6 +129,7 @@ func parseNolint(text string, info *nolintInfo) {
 	case rest == "" || strings.HasPrefix(rest, " "):
 		info.bare = true
 	case strings.HasPrefix(rest, ":"):
+		// SplitCSV-style iteration over comma-separated tokens.
 		for tok := range strings.SplitSeq(rest[1:], ",") {
 			if tok = strings.TrimSpace(tok); tok != "" {
 				if info.tokens == nil {

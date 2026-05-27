@@ -33,8 +33,10 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # SLSA build provenance (Build L1): a signed attestation describing how
-      # each release artifact was built. Verify with:
+      # SLSA build provenance (Build L2): a signed attestation describing how
+      # each release artifact was built. It is generated on a GitHub-hosted
+      # runner and signed via keyless Sigstore (id-token: write) — the
+      # hosted+signed property that distinguishes L2 from L1. Verify with:
       #   gh attestation verify <artifact> --repo peczenyj/structalign
       - name: Attest build provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0

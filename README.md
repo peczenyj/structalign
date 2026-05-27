@@ -13,17 +13,19 @@
 [![GitHub Release Date](https://img.shields.io/github/release-date/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
-[![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
+[![SLSA Build Level 2](https://img.shields.io/badge/SLSA-Build_L2-green.svg)](https://github.com/peczenyj/structalign/attestations)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/peczenyj/structalign/badge)](https://scorecard.dev/viewer/?uri=github.com/peczenyj/structalign)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#code-analysis)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
 > rewrite — plus a per-field **layout inspector**.
 
 A read-only companion to `golang.org/x/tools`'s `fieldalignment`: it shows the
-memory-optimal struct as a unified or side-by-side diff instead of silently
-rewriting your files, and can also print any struct's offset/size/align/padding
-layout. The analysis comes straight from the upstream analyzer, so results match
-`fieldalignment` exactly — only the presentation is new.
+memory-optimal struct as a unified or side-by-side diff built for human review,
+rather than rewriting your files or emitting a machine-applicable patch, and can
+also print any struct's offset/size/align/padding layout. The analysis comes
+straight from the upstream analyzer, so results match `fieldalignment` exactly —
+only the presentation is new.
 
 <p align="center">
   <img src="docs/diff.png" alt="structalign colored unified-diff output against the bundled sample" width="640">
@@ -57,7 +59,7 @@ non-zero so it can gate CI:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   type Mixed struct {
 + 	B int64
   	A bool
@@ -70,22 +72,59 @@ $ echo $?
 
 ## Why it exists
 
-`golang.org/x/tools/.../fieldalignment` has exactly two modes:
+`golang.org/x/tools/.../fieldalignment` can already detect a misaligned struct
+and rewrite it for you. It offers three things:
 
-- **report** — prints a terse message like `struct of size 24 could be 16` and nothing else;
-- **`-fix`** — silently rewrites your source.
+- **report** (default) — prints a terse message like `struct of size 24 could be 16` and nothing else;
+- **`-fix`** — rewrites your source in place;
+- **`-fix -diff`** — instead of writing, prints the change as a unified patch.
 
-There is no "show me the proposed struct / show me the diff" mode, and no way to
-inspect a struct's layout. `structalign` fills both gaps.
+So the change *can* be shown — but only as a patch built for `patch`/`git apply`,
+not for a person to read. It answers "how do I apply this?", not "what would the
+optimal struct look like, and is the saving worth it?" And none of these modes let
+you inspect a struct's *existing* layout — offsets, sizes, padding — at all.
 
-| | report a problem | show the diff | rewrite files | inspect layout | CI-friendly exit code |
-|---|:---:|:---:|:---:|:---:|:---:|
-| `fieldalignment`        | ✅ | ❌ | ❌ | ❌ | ✅ |
-| `fieldalignment -fix`   | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `structlayout`          | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **structalign**         | ✅ | ✅ | ❌ | ✅ | ✅ |
+`structalign` is the readability layer over that same upstream analysis: it shows
+the reordering as output meant for people — a review-oriented diff (unified or
+side-by-side, with color, summary, threshold, and tag-stripping) — plus a
+per-field layout inspector.
+
+|                              | [fieldalignment][fa] | [betteralign][ba] | [structlayout][sl] | **structalign** |
+|------------------------------|:--:|:--:|:--:|:--:|
+| Report the misalignment      | ✅ | ✅ | — | ✅ |
+| **Human-readable** diff      | — | — | — | ✅ |
+| Machine-applicable patch     | `-fix -diff` | `-fix -diff` | — | — |
+| Rewrite files in place       | `-fix` | `-fix` | — | — |
+| Inspect field layout         | — | — | ✅ | ✅ |
+| CI-friendly exit code        | ✅ | ✅ | — | ✅ |
+
+[fa]: https://github.com/golang/tools/tree/master/go/analysis/passes/fieldalignment
+[ba]: https://github.com/dkorunic/betteralign
+[sl]: https://github.com/dominikh/go-tools/tree/master/cmd/structlayout
 
 ## Usage
+
+`structalign` is a read-only companion to
+[`fieldalignment`](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/fieldalignment):
+it prints the reordered struct plus a diff (or, with `-inspect`, a struct's
+memory layout) for review, and never edits files. The analysis matches
+`fieldalignment` exactly; for an in-place rewrite, use `fieldalignment -fix`.
+
+`packages` are whatever the go tool understands: `./...`, import paths,
+directories, or single `.go` files. Generated and `_test.go` files are skipped
+unless `-generated` / `-tests` are given; only named structs are considered (a
+non-empty `-type` also skips anonymous structs and struct literals).
+
+In diff mode `structalign` exits **1 when any reordering is found** and **0
+otherwise**, so it drops into CI as a check; `-inspect` always exits 0. Note the
+most compact ordering is not always the most efficient — beware false sharing
+(see `-skip-cache-padded`).
+
+```sh
+structalign ./...                          # scan every package in the module
+structalign -diff=side -summary ./...      # side-by-side diff plus a total
+structalign -inspect -type=Config ./pkg    # one struct's per-field layout
+```
 
 ```
 structalign [flags] [packages]
@@ -128,13 +167,11 @@ the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
 
 The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
-`default` (the standard colors), `cga` (a bright 16-color CGA look), or `green` /
-`amber` (single-hue phosphor-monitor emulations). It only affects *which* colors
+`default` (the standard colors), `cga` (the iconic cyan/magenta/white CGA palette,
+with a reverse-video header bar), or `green` / `amber` (single-hue phosphor-monitor
+emulations). It only affects *which* colors
 are used when color is on; it does not turn color on by itself. An unknown value
 warns and falls back to `default`.
-
-Exit code is **1 when reorderings are found**, **0 when none** — so it drops into
-CI as a check. Inspect mode is informational and always exits 0.
 
 ## Modes
 
@@ -144,7 +181,7 @@ Unified diff:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   type Mixed struct {
 + 	B int64
   	A bool
@@ -157,7 +194,7 @@ Side-by-side:
 
 ```
 $ structalign -diff=side -width=28 -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
   type Mixed struct {          │ type Mixed struct {
@@ -211,7 +248,7 @@ type Mixed struct { // size: 24, align: 8, padding: 14
 The layout comes from the same `go/types` sizing the diff modes use
 (`types.Sizes.Offsetsof` / `Sizeof` / `Alignof`), driven by the toolchain's
 target sizes (your host `GOOS`/`GOARCH` by default). This is similar to
-`honnef.co/go/tools/cmd/structlayout`, but stays inside
+[`honnef.co/go/tools/cmd/structlayout`][sl], but stays inside
 this one tool and honors the same `-type` filter.
 
 #### Inspecting generic types
@@ -452,6 +489,21 @@ task changelog:unreleased      # preview pending entries
 task release TAG=v0.1.0        # stamp the changelog for a release
 ```
 
+## Prior work
+
+`structalign` builds upon — and is indebted to — the following prior work:
+
+- [**fieldalignment**](https://github.com/golang/tools/tree/master/go/analysis/passes/fieldalignment)
+  by the Go Authors — the upstream analyzer structalign wraps; all the alignment
+  math comes straight from it.
+- [**betteralign**](https://github.com/dkorunic/betteralign) by Dinko Korunić —
+  a maintained successor to `fieldalignment` that also applies fixes; structalign
+  recognizes its `//nolint:betteralign` directives via `-nolint-linters`.
+- [**maligned**](https://github.com/mdempsky/maligned) by Matthew Dempsky — the
+  original struct field-alignment detector, since superseded by `fieldalignment`.
+- [**structslop**](https://github.com/orijtech/structslop) by orijtech — suggests
+  struct field rearrangements to reduce memory footprint.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, commit
@@ -460,7 +512,3 @@ conventions, and the release process.
 ## License
 
 [MIT](LICENSE) © Tiago Peczenyj
-
-## Foo
-
-bar
