@@ -85,16 +85,17 @@ the proposed struct" view, and no way to inspect a struct's layout at all.
 diff (unified or side-by-side, with color, summary, threshold, and tag-stripping)
 and a per-field layout inspector.
 
-|                              | [fieldalignment][fa] | [structlayout][sl] | **structalign** |
-|------------------------------|:--:|:--:|:--:|
-| Report the misalignment      | ✅ | — | ✅ |
-| **Human-readable** diff      | — | — | ✅ |
-| Machine-applicable patch     | `-fix -diff` | — | — |
-| Rewrite files in place       | `-fix` | — | — |
-| Inspect field layout         | — | ✅ | ✅ |
-| CI-friendly exit code        | ✅ | — | ✅ |
+|                              | [fieldalignment][fa] | [betteralign][ba] | [structlayout][sl] | **structalign** |
+|------------------------------|:--:|:--:|:--:|:--:|
+| Report the misalignment      | ✅ | ✅ | — | ✅ |
+| **Human-readable** diff      | — | — | — | ✅ |
+| Machine-applicable patch     | `-fix -diff` | `-fix -diff` | — | — |
+| Rewrite files in place       | `-fix` | `-fix` | — | — |
+| Inspect field layout         | — | — | ✅ | ✅ |
+| CI-friendly exit code        | ✅ | ✅ | — | ✅ |
 
 [fa]: https://github.com/golang/tools/tree/master/go/analysis/passes/fieldalignment
+[ba]: https://github.com/dkorunic/betteralign
 [sl]: https://github.com/dominikh/go-tools/tree/master/cmd/structlayout
 
 ## Usage
