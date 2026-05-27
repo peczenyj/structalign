@@ -1,6 +1,5 @@
 # structalign
 
-[![tag](https://img.shields.io/github/tag/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases)
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.25-%23007d9c)
 [![GoDoc](https://pkg.go.dev/badge/github.com/peczenyj/structalign)](http://pkg.go.dev/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
