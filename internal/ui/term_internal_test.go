@@ -30,3 +30,9 @@ func TestWantColorDecision(t *testing.T) {
 		})
 	}
 }
+
+// isCharDevice must treat a nil file as "not a terminal" rather than
+// dereferencing it (the stdoutFile fallback passes nil for non-file writers).
+func TestIsCharDeviceNil(t *testing.T) {
+	assert.False(t, isCharDevice(nil))
+}
