@@ -20,10 +20,11 @@
 > rewrite — plus a per-field **layout inspector**.
 
 A read-only companion to `golang.org/x/tools`'s `fieldalignment`: it shows the
-memory-optimal struct as a unified or side-by-side diff instead of silently
-rewriting your files, and can also print any struct's offset/size/align/padding
-layout. The analysis comes straight from the upstream analyzer, so results match
-`fieldalignment` exactly — only the presentation is new.
+memory-optimal struct as a unified or side-by-side diff built for human review,
+rather than rewriting your files or emitting a machine-applicable patch, and can
+also print any struct's offset/size/align/padding layout. The analysis comes
+straight from the upstream analyzer, so results match `fieldalignment` exactly —
+only the presentation is new.
 
 <p align="center">
   <img src="docs/diff.png" alt="structalign colored unified-diff output against the bundled sample" width="640">
@@ -70,20 +71,22 @@ $ echo $?
 
 ## Why it exists
 
-`golang.org/x/tools/.../fieldalignment` is built to **act on** your code, not to
-help you read the change:
+`golang.org/x/tools/.../fieldalignment` can already detect a misaligned struct
+and rewrite it for you. It offers three things:
 
 - **report** (default) — prints a terse message like `struct of size 24 could be 16` and nothing else;
-- **`-fix`** — silently rewrites your source in place.
+- **`-fix`** — rewrites your source in place;
+- **`-fix -diff`** — instead of writing, prints the change as a unified patch.
 
-The analysis driver *can* produce a diff — `fieldalignment -fix -diff` emits a
-unified patch — but that patch is built for `patch`/`git apply`, not for a human
-to read: it answers "how do I apply this change?", not "what would the optimal
-struct look like, and is the saving worth it?" There was no read-only "show me
-the proposed struct" view, and no way to inspect a struct's layout at all.
-`structalign` fills both gaps with output meant for people: a review-oriented
-diff (unified or side-by-side, with color, summary, threshold, and tag-stripping)
-and a per-field layout inspector.
+So the change *can* be shown — but only as a patch built for `patch`/`git apply`,
+not for a person to read. It answers "how do I apply this?", not "what would the
+optimal struct look like, and is the saving worth it?" And none of these modes let
+you inspect a struct's *existing* layout — offsets, sizes, padding — at all.
+
+`structalign` is the readability layer over that same upstream analysis: it shows
+the reordering as output meant for people — a review-oriented diff (unified or
+side-by-side, with color, summary, threshold, and tag-stripping) — plus a
+per-field layout inspector.
 
 |                              | [fieldalignment][fa] | [betteralign][ba] | [structlayout][sl] | **structalign** |
 |------------------------------|:--:|:--:|:--:|:--:|
@@ -141,8 +144,9 @@ the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
 
 The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
-`default` (the standard colors), `cga` (a bright 16-color CGA look), or `green` /
-`amber` (single-hue phosphor-monitor emulations). It only affects *which* colors
+`default` (the standard colors), `cga` (the iconic cyan/magenta/white CGA palette,
+with a reverse-video header bar), or `green` / `amber` (single-hue phosphor-monitor
+emulations). It only affects *which* colors
 are used when color is on; it does not turn color on by itself. An unknown value
 warns and falls back to `default`.
 
