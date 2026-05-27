@@ -78,17 +78,6 @@ type options struct {
 	nolintLinters   string
 }
 
-// splitCSV splits a comma-separated list, trimming spaces and dropping empties.
-func splitCSV(s string) []string {
-	var out []string
-	for p := range strings.SplitSeq(s, ",") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
 // the proposed layout is not smaller. Shared by -summary (and, later, -sort and
 // -threshold).
@@ -147,17 +136,12 @@ func (a *App) Run(args []string) int {
 
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
-	// invisible in -help and never trip "flag provided but not defined". Last
-	// one wins; anything after "--" is left untouched (positional args).
+	// invisible in -help and never trip "flag provided but not defined".
 	themeName := ""
 	filtered := args[:0:0]
 	afterDD := false
 	for _, arg := range args {
-		if afterDD {
-			filtered = append(filtered, arg)
-			continue
-		}
-		if arg == "--" {
+		if afterDD || arg == "--" {
 			afterDD = true
 			filtered = append(filtered, arg)
 			continue
@@ -165,13 +149,11 @@ func (a *App) Run(args []string) int {
 
 		// Strip egg flags: -cga/-green/-amber and their -flag=value forms.
 		egg := ""
-		switch {
-		case arg == "-cga" || arg == "--cga" || strings.HasPrefix(arg, "-cga=") || strings.HasPrefix(arg, "--cga="):
-			egg = "cga"
-		case arg == "-green" || arg == "--green" || strings.HasPrefix(arg, "-green=") || strings.HasPrefix(arg, "--green="):
-			egg = "green"
-		case arg == "-amber" || arg == "--amber" || strings.HasPrefix(arg, "-amber=") || strings.HasPrefix(arg, "--amber="):
-			egg = "amber"
+		for _, name := range []string{"cga", "green", "amber"} {
+			if arg == "-"+name || arg == "--"+name || strings.HasPrefix(arg, "-"+name+"=") || strings.HasPrefix(arg, "--"+name+"=") {
+				egg = name
+				break
+			}
 		}
 
 		if egg != "" {
@@ -260,7 +242,7 @@ func (a *App) Run(args []string) int {
 			IncludeGenerated: opt.generated,
 			SkipCachePadded:  opt.skipCachePadded,
 			RespectNolint:    !opt.showNolint,
-			NolintLinters:    splitCSV(opt.nolintLinters),
+			NolintLinters:    match.SplitCSV(opt.nolintLinters),
 		}
 		if opt.inspect {
 			allLayouts = append(allLayouts, a.Inspector.Layouts(t, o)...)
@@ -323,12 +305,12 @@ func (a *App) Run(args []string) int {
 	return 0
 }
 
-// stdoutFile returns the *os.File behind w for terminal queries, or os.Stdout as
-// a harmless fallback when w is not a file (e.g. a test buffer); WantColor and
-// ResolveWidth both degrade gracefully in that case.
+// stdoutFile returns the *os.File behind w for terminal queries, or nil when
+// w is not a file (e.g. a test buffer); WantColor and ResolveWidth both
+// handle nil by falling back to safe defaults (no color, 80-column width).
 func stdoutFile(w io.Writer) *os.File {
 	if f, ok := w.(*os.File); ok {
 		return f
 	}
-	return os.Stdout
+	return nil
 }
