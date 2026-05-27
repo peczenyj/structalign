@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-runewidth"
+
 	"github.com/peczenyj/structalign/internal/textdiff"
 	"github.com/peczenyj/structalign/pkg/common"
 )
@@ -320,20 +322,37 @@ func withTypeName(src, name string) string {
 	return first + "\n" + rest
 }
 
+// truncPad fits s into exactly w display cells: right-padded with spaces when
+// shorter, or truncated with a trailing "…" when longer. Width is measured in
+// terminal cells via runewidth, so CJK and other wide runes count as two.
 func truncPad(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
 	// expand tabs to 4 spaces for stable columns
 	s = strings.ReplaceAll(s, "\t", "    ")
 	runes := []rune(s)
-	if len(runes) > w {
-		if w > 1 {
-			return string(runes[:w-1]) + "…"
-		}
-		if w == 1 {
-			return "…"
-		}
-		return ""
+	if total := runewidth.StringWidth(s); total <= w {
+		return s + strings.Repeat(" ", w-total)
 	}
-	return s + strings.Repeat(" ", w-len(runes))
+	if w == 1 {
+		return "…"
+	}
+	// Keep the widest prefix that still leaves one cell for the ellipsis, then
+	// pad: a wide rune straddling the boundary can leave the prefix a cell short.
+	width := 0
+	var b strings.Builder
+	for _, r := range runes {
+		rw := runewidth.RuneWidth(r)
+		if width+rw+1 > w { // reserve one cell for "…"
+			break
+		}
+		b.WriteRune(r)
+		width += rw
+	}
+	b.WriteString("…")
+	width++
+	return b.String() + strings.Repeat(" ", w-width)
 }
 
 func paint(on bool, code, s string) string {
