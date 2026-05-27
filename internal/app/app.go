@@ -116,8 +116,26 @@ func (a *App) Run(args []string) int {
 	fs.BoolVar(&opt.showNolint, "show-nolint", false, "show structs even when their type carries a recognized //nolint directive")
 	fs.StringVar(&opt.nolintLinters, "nolint-linters", "fieldalignment", "comma-separated //nolint tokens that suppress a finding (bare //nolint always counts)")
 	fs.Usage = func() {
-		fmt.Fprintf(a.Stderr, "structalign: print field-aligned struct reorderings (no file changes)\n\n")
-		fmt.Fprintf(a.Stderr, "usage: structalign [flags] [packages]\n\n")
+		fmt.Fprint(a.Stderr, //nolint:errcheck
+			"structalign: show how a struct's fields could be reordered to use less memory\n\n",
+			"usage: structalign [flags] [packages]\n\n",
+			"structalign is a read-only companion to fieldalignment: it prints the\n",
+			"reordered struct plus a diff (or, with -inspect, a struct's memory layout)\n",
+			"for review, and never edits files. The analysis matches fieldalignment\n",
+			"exactly; for an in-place rewrite, use fieldalignment itself.\n\n",
+			"packages are whatever the go tool understands: ./..., import paths,\n",
+			"directories, or single .go files. Generated and _test.go files are skipped\n",
+			"unless -generated / -tests are given; only named structs are considered (a\n",
+			"non-empty -type also skips anonymous structs and struct literals).\n\n",
+			"In diff mode structalign exits 1 when any reordering is found and 0\n",
+			"otherwise, so it can gate CI; -inspect always exits 0. Note the most\n",
+			"compact ordering is not always the most efficient — beware false sharing\n",
+			"(see -skip-cache-padded).\n\n",
+			"examples:\n",
+			"  structalign ./...                          scan every package in the module\n",
+			"  structalign -diff=side -summary ./...      side-by-side diff plus a total\n",
+			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n\n",
+			"flags:\n")
 		fs.PrintDefaults()
 	}
 	// Easter egg: fieldalignment has -fix; structalign deliberately only prints
