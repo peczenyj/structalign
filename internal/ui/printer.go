@@ -142,8 +142,10 @@ func (p *Printer) renderFinding(f common.Finding, style common.DiffStyle) {
 		header = fmt.Sprintf("%s:%d:%d: %s", file, loc.Line, loc.Column, f.Message)
 	}
 	if f.OldSize > 0 && f.NewSize > 0 && f.NewSize < f.OldSize {
-		pct := float64(f.OldSize-f.NewSize) / float64(f.OldSize) * 100
-		header += fmt.Sprintf(" (%02.2f%% smaller)", pct)
+		saved := f.OldSize - f.NewSize
+		pct := float64(saved) / float64(f.OldSize) * 100
+		// Surface the absolute bytes saved (the -threshold unit) next to the percentage.
+		header += fmt.Sprintf(", saving %d %s (%02.2f%% smaller)", saved, plural(saved, "byte", "bytes"), pct)
 	}
 	fmt.Fprintln(p.Out, p.paint(p.theme().Header, header)) //nolint:errcheck
 
