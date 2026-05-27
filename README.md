@@ -58,7 +58,7 @@ non-zero so it can gate CI:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   type Mixed struct {
 + 	B int64
   	A bool
@@ -180,7 +180,7 @@ Unified diff:
 
 ```
 $ structalign -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   type Mixed struct {
 + 	B int64
   	A bool
@@ -193,7 +193,7 @@ Side-by-side:
 
 ```
 $ structalign -diff=side -width=28 -type=Mixed ./_example
-_example/types.go:6:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+_example/types.go:6:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
   type Mixed struct {          │ type Mixed struct {

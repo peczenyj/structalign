@@ -1,4 +1,4 @@
-src.go:3:12: Mixed: struct of size 24 could be 16 (33.33% smaller)
+src.go:3:12: Mixed: struct of size 24 could be 16, saving 8 bytes (33.33% smaller)
   current                      │ proposed
   ─────────────────────────────┼─────────────────────────────
   type Mixed struct {          │ type Mixed struct {         
