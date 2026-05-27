@@ -85,17 +85,17 @@ the proposed struct" view, and no way to inspect a struct's layout at all.
 diff (unified or side-by-side, with color, summary, threshold, and tag-stripping)
 and a per-field layout inspector.
 
-| | report a problem | show the diff | rewrite files | inspect layout | CI-friendly exit code |
-|---|:---:|:---:|:---:|:---:|:---:|
-| `fieldalignment`        | ✅ | ✅† | ❌ | ❌ | ✅ |
-| `fieldalignment -fix`   | ❌ | ❌ | ✅ | ❌ | ❌ |
-| `structlayout`          | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **structalign**         | ✅ | ✅ | ❌ | ✅ | ✅ |
+|                              | [fieldalignment][fa] | [structlayout][sl] | **structalign** |
+|------------------------------|:--:|:--:|:--:|
+| Report the misalignment      | ✅ | — | ✅ |
+| **Human-readable** diff      | — | — | ✅ |
+| Machine-applicable patch     | `-fix -diff` | — | — |
+| Rewrite files in place       | `-fix` | — | — |
+| Inspect field layout         | — | ✅ | ✅ |
+| CI-friendly exit code        | ✅ | — | ✅ |
 
-† Only via `-fix -diff` together, and only as a machine-applicable unified patch
-for `patch`/`git apply` — never as standalone, human-oriented review output.
-structalign's diff is read-only by design: it shows the proposed struct, it does
-not edit (or stage edits to) your files.
+[fa]: https://github.com/golang/tools/tree/master/go/analysis/passes/fieldalignment
+[sl]: https://github.com/dominikh/go-tools/tree/master/cmd/structlayout
 
 ## Usage
 
@@ -223,7 +223,7 @@ type Mixed struct { // size: 24, align: 8, padding: 14
 The layout comes from the same `go/types` sizing the diff modes use
 (`types.Sizes.Offsetsof` / `Sizeof` / `Alignof`), driven by the toolchain's
 target sizes (your host `GOOS`/`GOARCH` by default). This is similar to
-`honnef.co/go/tools/cmd/structlayout`, but stays inside
+[`honnef.co/go/tools/cmd/structlayout`][sl], but stays inside
 this one tool and honors the same `-type` filter.
 
 #### Inspecting generic types
