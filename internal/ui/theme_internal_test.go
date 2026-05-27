@@ -1,0 +1,62 @@
+package ui
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// The default theme must render the same visual output as the historical
+// hand-rolled SGR palette. termenv emits combined sequences (e.g. "\x1b[1;36m"
+// for bold cyan rather than "\x1b[1m\x1b[36m"), which are visually identical;
+// the single-attribute roles are byte-for-byte unchanged.
+func TestDefaultThemeRendersHistoricalVisuals(t *testing.T) {
+	th := DefaultTheme()
+	cases := []struct {
+		name  string
+		style Style
+		want  string
+	}{
+		{"header bold cyan", th.Header, "\x1b[1;36mX\x1b[0m"},
+		{"added green", th.Added, "\x1b[32mX\x1b[0m"},
+		{"removed red", th.Removed, "\x1b[31mX\x1b[0m"},
+		{"meta dim", th.Meta, "\x1b[2mX\x1b[0m"},
+		{"padding red", th.Padding, "\x1b[31mX\x1b[0m"},
+		{"label bold", th.Label, "\x1b[1mX\x1b[0m"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, c.style.render("X"))
+		})
+	}
+}
+
+// A zero Style adds no escapes.
+func TestZeroStyleRendersPlain(t *testing.T) {
+	assert.Equal(t, "X", Style{}.render("X"))
+}
+
+// CGA must be a visibly distinct palette, not a brightened default: the iconic
+// mode-4 palette 1 (cyan/magenta/white). The header is magenta (95, not the
+// default's cyan) and removed lines are magenta (95, not red 31).
+func TestCgaThemeIsDistinctFromDefault(t *testing.T) {
+	def := DefaultTheme()
+	cga := builtinThemes["cga"]
+	assert.NotEqual(t, def.Header.render("X"), cga.Header.render("X"), "cga header must differ from default")
+	assert.Contains(t, cga.Header.render("X"), "95", "cga header is magenta")
+	assert.Contains(t, cga.Added.render("X"), "96", "cga added is bright cyan")
+	assert.Contains(t, cga.Removed.render("X"), "95", "cga removed is magenta, not red")
+	assert.NotContains(t, cga.Removed.render("X"), "31", "cga must not reuse the default red")
+}
+
+// The green (P1 phosphor) theme is monochrome: it must never use red (31),
+// since add/removed are distinguished by intensity + the +/- prefixes.
+func TestGreenThemeIsMonochrome(t *testing.T) {
+	green := builtinThemes["green"]
+	for _, st := range []Style{green.Header, green.Added, green.Removed, green.Meta, green.Padding, green.Label} {
+		seq := st.render("X")
+		assert.NotContains(t, seq, "31", "green theme must not use red")
+		assert.True(t, strings.Contains(seq, "32"), "green theme uses the green family: %q", seq)
+	}
+}

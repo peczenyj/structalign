@@ -1,36 +1,38 @@
 package ui
 
+import "github.com/muesli/termenv"
+
 // builtinThemes holds the named palettes. "default" mirrors DefaultTheme().
 // The monochrome themes (green/amber) use a single hue and rely on intensity
-// (bold vs dim) plus the +/- diff prefixes to distinguish added from removed.
+// (bold vs faint) plus the +/- diff prefixes to distinguish added from removed.
 var builtinThemes = map[string]Theme{
 	"default": DefaultTheme(),
 	// The iconic CGA mode-4 palette 1 (high intensity): cyan, magenta, white on
 	// black. Using magenta for removed/padding instead of the default's red makes
 	// the palette visibly distinct from the default rather than a mere brightening.
 	"cga": {
-		Header:  "\x1b[1m\x1b[7m\x1b[95m", // bold + reverse-video magenta (a header bar)
-		Added:   "\x1b[96m",               // bright cyan
-		Removed: "\x1b[95m",               // bright magenta
-		Meta:    "\x1b[90m",               // bright black (gray)
-		Padding: "\x1b[95m",               // bright magenta
-		Label:   "\x1b[1m\x1b[97m",        // bright white
+		Header:  Style{fg: termenv.ANSIBrightMagenta, bold: true, reverse: true}, // a header bar
+		Added:   Style{fg: termenv.ANSIBrightCyan},
+		Removed: Style{fg: termenv.ANSIBrightMagenta},
+		Meta:    Style{fg: termenv.ANSIBrightBlack}, // gray
+		Padding: Style{fg: termenv.ANSIBrightMagenta},
+		Label:   Style{fg: termenv.ANSIBrightWhite, bold: true},
 	},
 	"green": {
-		Header:  "\x1b[1m\x1b[32m", // bold green
-		Added:   "\x1b[1m\x1b[32m", // bold green (distinguished by the "+" prefix)
-		Removed: "\x1b[2m\x1b[32m", // dim green (distinguished by the "-" prefix)
-		Meta:    "\x1b[2m\x1b[32m", // dim green
-		Padding: "\x1b[2m\x1b[32m", // dim green
-		Label:   "\x1b[1m\x1b[32m", // bold green
+		Header:  Style{fg: termenv.ANSIGreen, bold: true},
+		Added:   Style{fg: termenv.ANSIGreen, bold: true},  // distinguished by the "+" prefix
+		Removed: Style{fg: termenv.ANSIGreen, faint: true}, // distinguished by the "-" prefix
+		Meta:    Style{fg: termenv.ANSIGreen, faint: true},
+		Padding: Style{fg: termenv.ANSIGreen, faint: true},
+		Label:   Style{fg: termenv.ANSIGreen, bold: true},
 	},
 	"amber": {
-		Header:  "\x1b[1m\x1b[38;5;214m", // bold amber (256-color)
-		Added:   "\x1b[1m\x1b[38;5;214m",
-		Removed: "\x1b[2m\x1b[38;5;214m", // dim amber
-		Meta:    "\x1b[2m\x1b[38;5;214m",
-		Padding: "\x1b[2m\x1b[38;5;214m",
-		Label:   "\x1b[1m\x1b[38;5;214m",
+		Header:  Style{fg: termenv.ANSI256Color(214), bold: true},
+		Added:   Style{fg: termenv.ANSI256Color(214), bold: true},
+		Removed: Style{fg: termenv.ANSI256Color(214), faint: true},
+		Meta:    Style{fg: termenv.ANSI256Color(214), faint: true},
+		Padding: Style{fg: termenv.ANSI256Color(214), faint: true},
+		Label:   Style{fg: termenv.ANSI256Color(214), bold: true},
 	},
 }
 
