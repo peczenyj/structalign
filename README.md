@@ -464,6 +464,24 @@ task changelog:unreleased      # preview pending entries
 task release TAG=v0.1.0        # stamp the changelog for a release
 ```
 
+## Prior work
+
+`structalign` builds upon — and is indebted to — the following prior work:
+
+- [**fieldalignment**](https://github.com/golang/tools/tree/master/go/analysis/passes/fieldalignment)
+  by the Go Authors — the upstream analyzer structalign wraps; all the alignment
+  math comes straight from it.
+- [**betteralign**](https://github.com/dkorunic/betteralign) by Dinko Korunić —
+  a maintained successor to `fieldalignment` that also applies fixes; structalign
+  recognizes its `//nolint:betteralign` directives via `-nolint-linters`.
+- [**maligned**](https://github.com/mdempsky/maligned) by Matthew Dempsky — the
+  original struct field-alignment detector, since superseded by `fieldalignment`.
+- [**structslop**](https://github.com/orijtech/structslop) by orijtech — suggests
+  struct field rearrangements to reduce memory footprint.
+- [**structlayout**](https://github.com/dominikh/go-tools/tree/master/cmd/structlayout)
+  by Dominik Honnef — prints a struct's in-memory layout; the inspiration for
+  `-inspect`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, commit
