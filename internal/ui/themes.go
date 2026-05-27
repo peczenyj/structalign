@@ -10,14 +10,15 @@ var builtinThemes = map[string]Theme{
 	// A high-intensity CGA-flavored palette. Magenta is reserved for the header
 	// (bold, not reverse-video); the diff body uses cyan (added) and yellow
 	// (removed) so it never echoes the header's magenta, while staying visibly
-	// distinct from the default. (Strict CGA mode-4 palette 1 is cyan/magenta/
+	// distinct from the default. Inspect padding shares the removed yellow (wasted
+	// space reads like a removal). (Strict CGA mode-4 palette 1 is cyan/magenta/
 	// white; yellow is a deliberate borrow for a clearer added/removed contrast.)
 	"cga": {
 		Header:  Style{fg: termenv.ANSIBrightMagenta, bold: true},
 		Added:   Style{fg: termenv.ANSIBrightCyan},
 		Removed: Style{fg: termenv.ANSIBrightYellow},
 		Meta:    Style{fg: termenv.ANSIBrightBlack}, // gray
-		Padding: Style{fg: termenv.ANSIBrightWhite},
+		Padding: Style{fg: termenv.ANSIBrightYellow},
 		Label:   Style{fg: termenv.ANSIBrightWhite, bold: true},
 	},
 	"green": {
