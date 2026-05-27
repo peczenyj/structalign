@@ -13,7 +13,8 @@
 [![GitHub Release Date](https://img.shields.io/github/release-date/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
-[![SLSA Build Level 1](https://img.shields.io/badge/SLSA-Build_L1-green.svg)](https://github.com/peczenyj/structalign/attestations)
+[![SLSA Build Level 2](https://img.shields.io/badge/SLSA-Build_L2-green.svg)](https://github.com/peczenyj/structalign/attestations)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/peczenyj/structalign/badge)](https://scorecard.dev/viewer/?uri=github.com/peczenyj/structalign)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#code-analysis)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
