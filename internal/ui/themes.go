@@ -7,14 +7,15 @@ import "github.com/muesli/termenv"
 // (bold vs faint) plus the +/- diff prefixes to distinguish added from removed.
 var builtinThemes = map[string]Theme{
 	"default": DefaultTheme(),
-	// The iconic CGA mode-4 palette 1 (high intensity): cyan, magenta, white on
-	// black. Magenta is reserved for the header bar; the diff body uses the other
-	// two CGA colors (cyan added, white removed/padding) so it doesn't echo the
-	// header's magenta, while the palette stays visibly distinct from the default.
+	// A high-intensity CGA-flavored palette. Magenta is reserved for the header
+	// (bold, not reverse-video); the diff body uses cyan (added) and yellow
+	// (removed) so it never echoes the header's magenta, while staying visibly
+	// distinct from the default. (Strict CGA mode-4 palette 1 is cyan/magenta/
+	// white; yellow is a deliberate borrow for a clearer added/removed contrast.)
 	"cga": {
-		Header:  Style{fg: termenv.ANSIBrightMagenta, bold: true, reverse: true}, // a header bar
+		Header:  Style{fg: termenv.ANSIBrightMagenta, bold: true},
 		Added:   Style{fg: termenv.ANSIBrightCyan},
-		Removed: Style{fg: termenv.ANSIBrightWhite},
+		Removed: Style{fg: termenv.ANSIBrightYellow},
 		Meta:    Style{fg: termenv.ANSIBrightBlack}, // gray
 		Padding: Style{fg: termenv.ANSIBrightWhite},
 		Label:   Style{fg: termenv.ANSIBrightWhite, bold: true},
