@@ -7,9 +7,11 @@ development workflows, and coding conventions.
 ## What this is
 
 `structalign` is a single-binary Go CLI that shows how a struct's fields could be
-reordered to use less memory — printing the reordered struct plus a diff, instead
-of rewriting files the way `fieldalignment -fix` does. It also has an `-inspect`
-mode that prints a struct's memory layout (offset/size/align/padding per field).
+reordered to use less memory, as **human-readable** output: it prints the
+reordered struct plus a diff for review, rather than editing files or emitting a
+machine-applicable patch the way `fieldalignment -fix` / `-fix -diff` do. It also
+has an `-inspect` mode that prints a struct's memory layout (offset/size/align/
+padding per field).
 
 The program is split into small, decoupled packages:
 
