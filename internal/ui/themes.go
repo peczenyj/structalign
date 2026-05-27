@@ -8,14 +8,15 @@ import "github.com/muesli/termenv"
 var builtinThemes = map[string]Theme{
 	"default": DefaultTheme(),
 	// The iconic CGA mode-4 palette 1 (high intensity): cyan, magenta, white on
-	// black. Using magenta for removed/padding instead of the default's red makes
-	// the palette visibly distinct from the default rather than a mere brightening.
+	// black. Magenta is reserved for the header bar; the diff body uses the other
+	// two CGA colors (cyan added, white removed/padding) so it doesn't echo the
+	// header's magenta, while the palette stays visibly distinct from the default.
 	"cga": {
 		Header:  Style{fg: termenv.ANSIBrightMagenta, bold: true, reverse: true}, // a header bar
 		Added:   Style{fg: termenv.ANSIBrightCyan},
-		Removed: Style{fg: termenv.ANSIBrightMagenta},
+		Removed: Style{fg: termenv.ANSIBrightWhite},
 		Meta:    Style{fg: termenv.ANSIBrightBlack}, // gray
-		Padding: Style{fg: termenv.ANSIBrightMagenta},
+		Padding: Style{fg: termenv.ANSIBrightWhite},
 		Label:   Style{fg: termenv.ANSIBrightWhite, bold: true},
 	},
 	"green": {

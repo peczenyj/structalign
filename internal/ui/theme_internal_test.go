@@ -38,16 +38,18 @@ func TestZeroStyleRendersPlain(t *testing.T) {
 }
 
 // CGA must be a visibly distinct palette, not a brightened default: the iconic
-// mode-4 palette 1 (cyan/magenta/white). The header is magenta (95, not the
-// default's cyan) and removed lines are magenta (95, not red 31).
+// mode-4 palette 1 (cyan/magenta/white). Magenta (95) is reserved for the header
+// bar; the diff body uses cyan (added) and white (removed), never the default's
+// red (31) and never echoing the header's magenta inside the diff.
 func TestCgaThemeIsDistinctFromDefault(t *testing.T) {
 	def := DefaultTheme()
 	cga := builtinThemes["cga"]
 	assert.NotEqual(t, def.Header.render("X"), cga.Header.render("X"), "cga header must differ from default")
 	assert.Contains(t, cga.Header.render("X"), "95", "cga header is magenta")
 	assert.Contains(t, cga.Added.render("X"), "96", "cga added is bright cyan")
-	assert.Contains(t, cga.Removed.render("X"), "95", "cga removed is magenta, not red")
+	assert.Contains(t, cga.Removed.render("X"), "97", "cga removed is bright white")
 	assert.NotContains(t, cga.Removed.render("X"), "31", "cga must not reuse the default red")
+	assert.NotContains(t, cga.Removed.render("X"), "95", "magenta is reserved for the header bar")
 }
 
 // The green (P1 phosphor) theme is monochrome: it must never use red (31),
