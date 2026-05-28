@@ -39,6 +39,7 @@ func TestUsageHasManPageSections(t *testing.T) {
 func TestUsageOmitsEasterEggs(t *testing.T) {
 	u := usageText(t)
 	assert.NotContains(t, u, "-fix", "the -fix egg stays out of help")
+	assert.NotContains(t, u, "-no-rc", "the -no-rc flag stays out of help")
 	assert.NotContains(t, u, "-cga", "theme eggs stay out of help")
 	assert.NotContains(t, u, "-green")
 	assert.NotContains(t, u, "-amber")
