@@ -300,10 +300,10 @@ func (a *App) Run(args []string) int {
 	if opt.format == common.FormatJSON {
 		if opt.inspect {
 			total = len(allLayouts)
-			printer.RenderJSON(resolveVersion(), nil, allLayouts)
+			printer.RenderJSON(resolveVersion(), nil, allLayouts, opt.tags)
 		} else {
 			total = len(allFindings)
-			printer.RenderJSON(resolveVersion(), allFindings, nil)
+			printer.RenderJSON(resolveVersion(), allFindings, nil, opt.tags)
 		}
 	} else {
 		if opt.inspect {

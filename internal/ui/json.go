@@ -58,8 +58,11 @@ type jsonLayoutField struct {
 	Padding int64  `json:"padding"`
 }
 
-// RenderJSON emitted a structured JSON document for findings or layouts.
-func (p *Printer) RenderJSON(version string, findings []common.Finding, layouts []common.Layout) {
+// RenderJSON emits a structured JSON document for findings or layouts. When
+// keepTags is false, struct field tags are omitted from inspect-mode layouts
+// (mirroring the text inspect behavior); diff-mode findings carry tags inside
+// `original` / `proposed` only when the upstream align phase preserved them.
+func (p *Printer) RenderJSON(version string, findings []common.Finding, layouts []common.Layout, keepTags bool) {
 	doc := jsonDocument{
 		Version: version,
 	}
@@ -79,10 +82,14 @@ func (p *Printer) RenderJSON(version string, findings []common.Finding, layouts 
 				Fields:     make([]jsonLayoutField, len(l.Fields)),
 			}
 			for j, f := range l.Fields {
+				tag := f.Tag
+				if !keepTags {
+					tag = ""
+				}
 				doc.Layouts[i].Fields[j] = jsonLayoutField{
 					Name:    f.Name,
 					Type:    f.Type,
-					Tag:     f.Tag,
+					Tag:     tag,
 					Assume:  f.Assume,
 					Offset:  f.Offset,
 					Size:    f.Size,

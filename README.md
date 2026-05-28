@@ -440,7 +440,10 @@ type Tagged struct { // size: 48, align: 8, padding: 18
 ```
 
 Tags never affect the layout numbers (size/offset/alignment are independent of
-tags), so stripping them changes only the display, never the analysis.
+tags), so stripping them changes only the display, never the analysis. The same
+flag governs JSON output: with `-format=json`, the inspect document's `tag`
+field is emitted only when `-tags` (or `STRUCTALIGN_TAGS=true`, or `tags = true`
+in `.structalignrc`) is in effect.
 
 ## How it works
 
