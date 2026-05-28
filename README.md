@@ -132,6 +132,7 @@ structalign [flags] [packages]
                   single .go files (defaults the go tool understands)
 
   -diff value     diff style: unified|side|none       (default "unified")
+  -format value   output format: text|json           (default "text")
   -width int      column width per side for -diff=side (default: auto from terminal)
   -color value    colorize: auto|always|never         (default "auto")
   -inspect        inspect layout instead of diffing: print each struct as
@@ -193,6 +194,7 @@ CI), use the `-no-rc` flag. Note that **theme** is not an RC key; set it via the
 | Feature | CLI Flag | Environment Variable | RC Key | Default |
 |---------|----------|----------------------|--------|---------|
 | Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Output format | `-format` | `STRUCTALIGN_FORMAT` | `format` | `text` |
 | Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
 | Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
 | Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
@@ -438,7 +440,10 @@ type Tagged struct { // size: 48, align: 8, padding: 18
 ```
 
 Tags never affect the layout numbers (size/offset/alignment are independent of
-tags), so stripping them changes only the display, never the analysis.
+tags), so stripping them changes only the display, never the analysis. The same
+flag governs JSON output: with `-format=json`, the inspect document's `tag`
+field is emitted only when `-tags` (or `STRUCTALIGN_TAGS=true`, or `tags = true`
+in `.structalignrc`) is in effect.
 
 ## How it works
 

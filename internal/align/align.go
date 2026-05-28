@@ -81,7 +81,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 // stripping and all active filters. Returns nil when the finding should be
 // suppressed.
 func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, structs map[token.Pos]*types.Struct, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
-	f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
+	f := common.Finding{Package: t.PkgPath, Fset: t.Fset, Pos: d.Pos, Message: d.Message}
 	if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
 		e := d.SuggestedFixes[0].TextEdits[0]
 		f.Pos = e.Pos

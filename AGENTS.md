@@ -129,6 +129,7 @@ Keys map directly to flag names. **theme** is not an RC key (use
 | Feature | CLI Flag | Environment Variable | RC Key | Default |
 |---------|----------|----------------------|--------|---------|
 | Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Output format | `-format` | `STRUCTALIGN_FORMAT` | `format` | `text` |
 | Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
 | Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
 | Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
