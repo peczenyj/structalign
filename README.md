@@ -158,8 +158,8 @@ structalign [flags] [packages]
   -nolint-linters string
                   //nolint tokens that suppress a finding (default
                   "fieldalignment"; a bare //nolint always counts)
--version        print version and exit
--no-rc          skip loading .structalignrc files
+  -no-rc          skip loading .structalignrc files
+  -version        print version and exit
 ```
 
 In the default `-color=auto`, color is emitted only when stdout is a terminal and
@@ -525,6 +525,22 @@ diffing uses `go-udiff` rather than x/tools' own diff package:
   `github.com/peczenyj/structalign` (not under `golang.org/x/tools/`), so the
   compiler rejects it. `go-udiff` is a public port of the same gopls diff code,
   so the results are equivalent.
+
+## Easter eggs
+
+A few hidden flags are intentionally kept out of `-help` and the flag table above:
+**`-cga`, `-green`, `-amber`** — shortcuts for the retro-theme palettes otherwise
+selected with `STRUCTALIGN_THEME=…`. Pick one per invocation; the egg flag wins
+over the environment variable.
+
+```sh
+structalign -cga ./...                     # cyan/magenta/white CGA palette
+structalign -green -inspect ./_example     # single-hue green-phosphor look
+structalign -amber -diff=side ./...        # amber-phosphor side-by-side diff
+```
+
+They are stripped before flag parsing, so they never trip *"flag provided but not
+defined"* when combined with normal flags.
 
 ## Changelog
 

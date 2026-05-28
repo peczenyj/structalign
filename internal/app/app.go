@@ -78,6 +78,7 @@ type options struct {
 	threshold       int
 	showNolint      bool
 	nolintLinters   string
+	noRC            bool
 }
 
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
@@ -119,6 +120,7 @@ func (a *App) Run(args []string) int {
 	fs.IntVar(&opt.threshold, "threshold", 0, "in diff mode, only show structs that save at least this many bytes")
 	fs.BoolVar(&opt.showNolint, "show-nolint", false, "show structs even when their type carries a recognized //nolint directive")
 	fs.StringVar(&opt.nolintLinters, "nolint-linters", "fieldalignment", "comma-separated //nolint tokens that suppress a finding (bare //nolint always counts)")
+	fs.BoolVar(&opt.noRC, "no-rc", false, "skip loading .structalignrc files")
 	fs.Usage = func() {
 		fmt.Fprint(a.Stderr, //nolint:errcheck
 			"structalign: show how a struct's fields could be reordered to use less memory\n\n",
@@ -160,7 +162,9 @@ func (a *App) Run(args []string) int {
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
 	// invisible in -help and never trip "flag provided but not defined".
-	// Also scans for -no-rc to disable RC loading.
+	// Also peeks at -no-rc so RC loading (which precedes fs.Parse) can honor it;
+	// the flag itself is still registered with fs so fs.Parse binds opt.noRC and
+	// -h lists it like any other config flag.
 	themeName, noRC, args := a.scanEarlyFlags(args)
 
 	// Apply configuration layers as defaults.
@@ -344,9 +348,13 @@ func cmp[T ~int | ~int64](a, b T) int {
 
 var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
 
-// scanEarlyFlags scans args for retro-theme "easter egg" flags and the -no-rc
-// flag, returning the chosen theme name, whether RC loading is disabled, and
-// the args slice with those flags removed. It stops at the first "--" separator.
+// scanEarlyFlags peeks at args ahead of fs.Parse for two reasons: the
+// retro-theme "easter egg" flags (-cga/-green/-amber) are not registered with
+// the FlagSet (they stay invisible in -help) and must be stripped so fs.Parse
+// doesn't reject them; and -no-rc must be known before RC loading runs.
+// Returns the chosen theme name, whether RC loading is disabled, and the args
+// slice. The egg flags are stripped; -no-rc is left in place so fs.Parse can
+// also bind it to opt.noRC. Stops at the first "--" separator.
 func (a *App) scanEarlyFlags(args []string) (theme string, noRC bool, filtered []string) {
 	filtered = make([]string, 0, len(args))
 	afterDD := false
@@ -363,6 +371,7 @@ func (a *App) scanEarlyFlags(args []string) (theme string, noRC bool, filtered [
 				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
 					noRC = true
 				}
+				filtered = append(filtered, arg)
 				continue
 			}
 			if name == "cga" || name == "green" || name == "amber" {
