@@ -198,3 +198,38 @@ type WithPad struct {
 	require.NoError(t, ferr)
 	assert.Empty(t, findings, "WithPad should be skipped when SkipCachePadded=true")
 }
+
+func TestFindingsSkipsAnonymousCachePadded(t *testing.T) {
+	root := moduleRoot(t)
+	testPkgDir := filepath.Join(root, "internal", "align", "_anoncachepadtest")
+	if err := os.MkdirAll(testPkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(testPkgDir) })
+
+	src := `package anoncachepadtest
+
+import "golang.org/x/sys/cpu"
+
+var V = struct {
+	A bool
+	B int64
+	C bool
+	_ cpu.CacheLinePad
+}{A: true, B: 1, C: true}
+`
+	err := os.WriteFile(filepath.Join(testPkgDir, "types.go"), []byte(src), 0o600)
+	require.NoError(t, err)
+
+	tgt := loadPackageTarget(t, testPkgDir)
+
+	// Without SkipCachePadded, the anonymous struct should be reported.
+	findings, ferr := align.New().Findings(tgt, common.Options{})
+	require.NoError(t, ferr)
+	assert.NotEmpty(t, findings, "Anonymous struct should be reported without SkipCachePadded")
+
+	// With SkipCachePadded=true, the anonymous struct should be silently skipped.
+	findings, ferr = align.New().Findings(tgt, common.Options{SkipCachePadded: true})
+	require.NoError(t, ferr)
+	assert.Empty(t, findings, "Anonymous struct should be skipped when SkipCachePadded=true")
+}
