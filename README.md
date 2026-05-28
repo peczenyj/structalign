@@ -188,6 +188,28 @@ Keys map directly to flag names. To skip loading configuration files (e.g. in
 CI), use the `-no-rc` flag. Note that **theme** is not an RC key; set it via the
 `STRUCTALIGN_THEME` environment variable.
 
+#### Configuration Reference
+
+| Feature | CLI Flag | Environment Variable | RC Key | Default |
+|---------|----------|----------------------|--------|---------|
+| Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
+| Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
+| Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
+| Inspect mode | `-inspect` | `STRUCTALIGN_INSPECT` | `inspect` | `false` |
+| Verbose inspect | `-verbose` | `STRUCTALIGN_VERBOSE` | `verbose` | `false` |
+| Keep tags | `-tags` | `STRUCTALIGN_TAGS` | `tags` | `false` |
+| Show summary | `-summary` | `STRUCTALIGN_SUMMARY` | `summary` | `false` |
+| Largest-first sort | `-sort` | `STRUCTALIGN_SORT` | `sort` | `false` |
+| Min bytes saved | `-threshold` | `STRUCTALIGN_THRESHOLD` | `threshold` | `0` |
+| Type filter | `-type` | `STRUCTALIGN_TYPE` | `type` | (empty) |
+| Package exclude | `-exclude` | `STRUCTALIGN_EXCLUDE` | `exclude` | `^unsafe$\|^builtin$` |
+| Include generated | `-generated` | `STRUCTALIGN_GENERATED` | `generated` | `false` |
+| Include tests | `-tests` | `STRUCTALIGN_TESTS` | `tests` | `false` |
+| Skip cache padded | `-skip-cache-padded` | `STRUCTALIGN_SKIP_CACHE_PADDED` | `skip-cache-padded` | `false` |
+| Show //nolint | `-show-nolint` | `STRUCTALIGN_SHOW_NOLINT` | `show-nolint` | `false` |
+| Nolint linters | `-nolint-linters` | `STRUCTALIGN_NOLINT_LINTERS` | `nolint-linters` | `fieldalignment` |
+
 The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
 ... Applied fuzzy match at line 147.
 `default` (the standard colors), `cga` (the iconic cyan/magenta/white CGA palette,
