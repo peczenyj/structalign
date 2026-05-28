@@ -132,6 +132,7 @@ structalign [flags] [packages]
                   single .go files (defaults the go tool understands)
 
   -diff value     diff style: unified|side|none       (default "unified")
+  -format value   output format: text|json           (default "text")
   -width int      column width per side for -diff=side (default: auto from terminal)
   -color value    colorize: auto|always|never         (default "auto")
   -inspect        inspect layout instead of diffing: print each struct as
@@ -193,6 +194,7 @@ CI), use the `-no-rc` flag. Note that **theme** is not an RC key; set it via the
 | Feature | CLI Flag | Environment Variable | RC Key | Default |
 |---------|----------|----------------------|--------|---------|
 | Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Output format | `-format` | `STRUCTALIGN_FORMAT` | `format` | `text` |
 | Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
 | Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
 | Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |

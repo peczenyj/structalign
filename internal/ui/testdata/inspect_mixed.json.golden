@@ -1,0 +1,39 @@
+{
+  "version": "v0.7.0-test",
+  "mode": "inspect",
+  "layouts": [
+    {
+      "package": "sample",
+      "name": "Mixed",
+      "size": 24,
+      "align": 8,
+      "padding": 14,
+      "fields": [
+        {
+          "name": "A",
+          "type": "bool",
+          "offset": 0,
+          "size": 1,
+          "align": 1,
+          "padding": 7
+        },
+        {
+          "name": "B",
+          "type": "int64",
+          "offset": 8,
+          "size": 8,
+          "align": 8,
+          "padding": 0
+        },
+        {
+          "name": "C",
+          "type": "bool",
+          "offset": 16,
+          "size": 1,
+          "align": 1,
+          "padding": 7
+        }
+      ]
+    }
+  ]
+}

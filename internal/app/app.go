@@ -61,6 +61,7 @@ func New(stdout, stderr io.Writer) *App {
 
 type options struct {
 	diff            common.DiffStyle
+	format          common.Format
 	width           int
 	colorize        common.Colorize
 	typeFilter      string
@@ -99,6 +100,8 @@ func (a *App) Run(args []string) int {
 	fs.SetOutput(a.Stderr)
 	opt.diff = common.DiffUnified // zero value is DiffUnified; set for clarity
 	fs.Var(&opt.diff, "diff", fmt.Sprintf("diff style: %s (default %q)", opt.diff.Type(), opt.diff.String()))
+	opt.format = common.FormatText // zero value is FormatText; set for clarity
+	fs.Var(&opt.format, "format", fmt.Sprintf("output format: %s (default %q)", opt.format.Type(), opt.format.String()))
 	fs.IntVar(&opt.width, "width", 0, "column width per side for -diff=side (0 = auto from terminal)")
 	opt.colorize = common.ColorizeAuto // zero value is ColorizeAuto; set for clarity
 	fs.Var(&opt.colorize, "color", fmt.Sprintf("colorize: %s (default %q)", opt.colorize.Type(), opt.colorize.String()))
@@ -135,7 +138,8 @@ func (a *App) Run(args []string) int {
 			"examples:\n",
 			"  structalign ./...                          scan every package in the module\n",
 			"  structalign -diff=side -summary ./...      side-by-side diff plus a total\n",
-			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n\n",
+			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n",
+			"  structalign -format=json ./...             machine-readable findings\n\n",
 			"flags:\n")
 		fs.PrintDefaults()
 	}
@@ -293,23 +297,33 @@ func (a *App) Run(args []string) int {
 	}
 
 	var total int
-	if opt.inspect {
-		total = printer.RenderLayouts(allLayouts, opt.verbose, opt.tags)
-	} else {
-		total = printer.RenderFindings(allFindings, opt.diff)
-	}
-
-	if opt.summary && !opt.inspect {
-		var bytesSaved int64
-		for _, f := range allFindings {
-			bytesSaved += savings(f)
-		}
-		printer.RenderSummary(total, bytesSaved)
-	} else if total == 0 {
+	if opt.format == common.FormatJSON {
 		if opt.inspect {
-			fmt.Fprintln(a.Stderr, "no matching structs found")
+			total = len(allLayouts)
+			printer.RenderJSON(resolveVersion(), nil, allLayouts)
 		} else {
-			fmt.Fprintln(a.Stderr, "no struct reorderings found")
+			total = len(allFindings)
+			printer.RenderJSON(resolveVersion(), allFindings, nil)
+		}
+	} else {
+		if opt.inspect {
+			total = printer.RenderLayouts(allLayouts, opt.verbose, opt.tags)
+		} else {
+			total = printer.RenderFindings(allFindings, opt.diff)
+		}
+
+		if opt.summary && !opt.inspect {
+			var bytesSaved int64
+			for _, f := range allFindings {
+				bytesSaved += savings(f)
+			}
+			printer.RenderSummary(total, bytesSaved)
+		} else if total == 0 {
+			if opt.inspect {
+				fmt.Fprintln(a.Stderr, "no matching structs found")
+			} else {
+				fmt.Fprintln(a.Stderr, "no struct reorderings found")
+			}
 		}
 	}
 	if total > 0 && !opt.inspect {

@@ -83,6 +83,7 @@ func (i *Inspector) buildLayout(t common.Target, n string, tn *types.TypeName, o
 		return common.Layout{}, false
 	}
 	l := computeLayout(n, st, display, assumed, t.Sizes)
+	l.Package = t.PkgPath
 	l.TypeParams = typeParams
 	l.Note = note
 	return l, true
