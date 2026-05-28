@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/peczenyj/structalign/internal/align"
+	"github.com/peczenyj/structalign/internal/config"
 	"github.com/peczenyj/structalign/internal/layout"
 	"github.com/peczenyj/structalign/internal/loader"
 	"github.com/peczenyj/structalign/internal/match"
@@ -155,7 +156,28 @@ func (a *App) Run(args []string) int {
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
 	// invisible in -help and never trip "flag provided but not defined".
-	themeName, args := a.stripEggFlags(args)
+	// Also scans for -no-rc to disable RC loading.
+	themeName, noRC, args := a.scanEarlyFlags(args)
+
+	// Apply configuration layers as defaults.
+	if !noRC {
+		home, _ := os.UserHomeDir()
+		cwd, _ := os.Getwd()
+		for k, v := range config.Load(home, cwd) {
+			if err := fs.Set(k, v); err != nil {
+				fmt.Fprintf(a.Stderr, "structalign: config: %s: %v\n", k, err)
+			}
+		}
+	}
+
+	// Apply environment variables.
+	fs.VisitAll(func(f *flag.Flag) {
+		if val := os.Getenv(config.EnvName(f.Name)); val != "" {
+			if err := fs.Set(f.Name, val); err != nil {
+				fmt.Fprintf(a.Stderr, "structalign: env: %s: %v\n", f.Name, err)
+			}
+		}
+	})
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -308,10 +330,10 @@ func cmp[T ~int | ~int64](a, b T) int {
 
 var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
 
-// stripEggFlags scans args for retro-theme "easter egg" flags, returning the
-// chosen theme name and the args slice with those flags removed. It stops at
-// the first "--" separator.
-func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
+// scanEarlyFlags scans args for retro-theme "easter egg" flags and the -no-rc
+// flag, returning the chosen theme name, whether RC loading is disabled, and
+// the args slice with those flags removed. It stops at the first "--" separator.
+func (a *App) scanEarlyFlags(args []string) (theme string, noRC bool, filtered []string) {
 	filtered = make([]string, 0, len(args))
 	afterDD := false
 	for _, arg := range args {
@@ -323,6 +345,12 @@ func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
 
 		if m := eggRE.FindStringSubmatch(arg); m != nil {
 			name, val := m[1], m[2]
+			if name == "no-rc" {
+				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
+					noRC = true
+				}
+				continue
+			}
 			if name == "cga" || name == "green" || name == "amber" {
 				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
 					theme = name
@@ -332,7 +360,7 @@ func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
 		}
 		filtered = append(filtered, arg)
 	}
-	return theme, filtered
+	return theme, noRC, filtered
 }
 
 // stdoutFile returns the *os.File behind w for terminal queries, or nil when

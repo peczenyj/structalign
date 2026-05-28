@@ -157,15 +157,61 @@ structalign [flags] [packages]
   -nolint-linters string
                   //nolint tokens that suppress a finding (default
                   "fieldalignment"; a bare //nolint always counts)
-
-  -version        print version and exit
+-version        print version and exit
+-no-rc          skip loading .structalignrc files
 ```
 
 In the default `-color=auto`, color is emitted only when stdout is a terminal and
 the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
 
+### Configuration
+
+`structalign` supports persistent defaults via environment variables and
+`.structalignrc` files. Precedence (highest wins):
+
+1. **CLI flags** (e.g. `structalign -sort`)
+2. **Environment variables**: `STRUCTALIGN_<FLAG>`, e.g. `STRUCTALIGN_SORT=true`.
+3. **Local config**: `.structalignrc` in the current directory.
+4. **Global config**: `~/.structalignrc`.
+
+The configuration files use a simple `key = value` format:
+
+```ini
+# .structalignrc example
+sort = true
+threshold = 8
+skip-cache-padded = true
+```
+
+Keys map directly to flag names. To skip loading configuration files (e.g. in
+CI), use the `-no-rc` flag. Note that **theme** is not an RC key; set it via the
+`STRUCTALIGN_THEME` environment variable.
+
+#### Configuration Reference
+
+| Feature | CLI Flag | Environment Variable | RC Key | Default |
+|---------|----------|----------------------|--------|---------|
+| Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
+| Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
+| Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
+| Inspect mode | `-inspect` | `STRUCTALIGN_INSPECT` | `inspect` | `false` |
+| Verbose inspect | `-verbose` | `STRUCTALIGN_VERBOSE` | `verbose` | `false` |
+| Keep tags | `-tags` | `STRUCTALIGN_TAGS` | `tags` | `false` |
+| Show summary | `-summary` | `STRUCTALIGN_SUMMARY` | `summary` | `false` |
+| Largest-first sort | `-sort` | `STRUCTALIGN_SORT` | `sort` | `false` |
+| Min bytes saved | `-threshold` | `STRUCTALIGN_THRESHOLD` | `threshold` | `0` |
+| Type filter | `-type` | `STRUCTALIGN_TYPE` | `type` | (empty) |
+| Package exclude | `-exclude` | `STRUCTALIGN_EXCLUDE` | `exclude` | `^unsafe$\|^builtin$` |
+| Include generated | `-generated` | `STRUCTALIGN_GENERATED` | `generated` | `false` |
+| Include tests | `-tests` | `STRUCTALIGN_TESTS` | `tests` | `false` |
+| Skip cache padded | `-skip-cache-padded` | `STRUCTALIGN_SKIP_CACHE_PADDED` | `skip-cache-padded` | `false` |
+| Show //nolint | `-show-nolint` | `STRUCTALIGN_SHOW_NOLINT` | `show-nolint` | `false` |
+| Nolint linters | `-nolint-linters` | `STRUCTALIGN_NOLINT_LINTERS` | `nolint-linters` | `fieldalignment` |
+
 The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
+... Applied fuzzy match at line 147.
 `default` (the standard colors), `cga` (the iconic cyan/magenta/white CGA palette,
 with a reverse-video header bar), or `green` / `amber` (single-hue phosphor-monitor
 emulations). It only affects *which* colors

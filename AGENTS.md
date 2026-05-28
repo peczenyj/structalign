@@ -24,6 +24,7 @@ The program is split into small, decoupled packages:
   (runs the analyzer → findings), `layout` (computes struct layouts), `sizes`
   (`go/types` sizing adapter), `textdiff` (go-udiff line diff), `match` (glob
   filtering), `structfilter` (generated-file and `cpu.CacheLinePad` predicates),
+  `config` (.structalignrc and env var mapping),
   `ui` (the `Printer` — all rendering + color/width helpers), `app` (flag parsing
   + wiring). Plus `testutil` (in-process `Target` builder for tests) and `mocks`
   (mockery-generated, test-only).
@@ -112,6 +113,40 @@ deterministic implementation.
 Package load/type errors are surfaced on each `Target.Errors` and printed to
 stderr but are non-fatal — a partially-resolved package can still produce findings.
 
+**Layered Configuration:** defaults are loaded from four layers before parsing
+CLI arguments (highest precedence wins):
+1. **CLI flags** (e.g. `-sort`)
+2. **Environment variables** (`STRUCTALIGN_<FLAG>`, e.g. `STRUCTALIGN_SORT=true`)
+3. **CWD RC file** (`./.structalignrc`, key=value format)
+4. **Home RC file** (`~/.structalignrc`)
+5. **Built-in defaults**
+
+The `-no-rc` flag (detected early) disables loading both `.structalignrc` files.
+RC files use `key = value` lines; `#` comments and blank lines are ignored.
+Keys map directly to flag names. **theme** is not an RC key (use
+`STRUCTALIGN_THEME`).
+
+| Feature | CLI Flag | Environment Variable | RC Key | Default |
+|---------|----------|----------------------|--------|---------|
+| Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
+| Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
+| Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
+| Inspect mode | `-inspect` | `STRUCTALIGN_INSPECT` | `inspect` | `false` |
+| Verbose inspect | `-verbose` | `STRUCTALIGN_VERBOSE` | `verbose` | `false` |
+| Keep tags | `-tags` | `STRUCTALIGN_TAGS` | `tags` | `false` |
+| Show summary | `-summary` | `STRUCTALIGN_SUMMARY` | `summary` | `false` |
+| Largest-first sort | `-sort` | `STRUCTALIGN_SORT` | `sort` | `false` |
+| Min bytes saved | `-threshold` | `STRUCTALIGN_THRESHOLD` | `threshold` | `0` |
+| Type filter | `-type` | `STRUCTALIGN_TYPE` | `type` | (empty) |
+| Package exclude | `-exclude` | `STRUCTALIGN_EXCLUDE` | `exclude` | `^unsafe$\|^builtin$` |
+| Include generated | `-generated` | `STRUCTALIGN_GENERATED` | `generated` | `false` |
+| Include tests | `-tests` | `STRUCTALIGN_TESTS` | `tests` | `false` |
+| Skip cache padded | `-skip-cache-padded` | `STRUCTALIGN_SKIP_CACHE_PADDED` | `skip-cache-padded` | `false` |
+| Show //nolint | `-show-nolint` | `STRUCTALIGN_SHOW_NOLINT` | `show-nolint` | `false` |
+| Nolint linters | `-nolint-linters` | `STRUCTALIGN_NOLINT_LINTERS` | `nolint-linters` | `fieldalignment` |
+
+
 **Why go-udiff and not x/tools' own diff:** Go's internal-package rule forbids
 importing `golang.org/x/tools/internal/diff` from a module not rooted under
 `golang.org/x/tools/`. `fieldalignment`'s *own* internal imports are fine because
@@ -136,7 +171,11 @@ to swap it back for the internal package — it won't compile from this module.
   default** (`-generated` opts in); `_test.go` is loaded only with `-tests`
   (`loader.New(tests)`); `-exclude` drops packages by import-path regexp in `app`.
   Add a new scan knob to `Options`, not as another positional arg.
-- **`//nolint` is respected by default (diff only).** `align.nolintIndex` maps
+  - **Config discovery lives in `internal/config`.** It handles `.structalignrc`
+  parsing and env-name derivation (`-skip-cache-padded` →
+  `STRUCTALIGN_SKIP_CACHE_PADDED`). `app.Run` wires these as defaults via
+  `fs.Set` before calling `fs.Parse`.
+  - **//nolint is respected by default (diff only).** `align.nolintIndex` maps
   `StructType.Pos()` to the directive parsed from the type's doc comment
   (`TypeSpec.Doc` / grouped `GenDecl.Doc`) **and** any comment on the type's
   opening line (a trailing `type T struct { //nolint`, matched by line since the
