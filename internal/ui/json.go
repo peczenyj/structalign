@@ -3,7 +3,6 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/peczenyj/structalign/pkg/common"
 )
@@ -62,12 +61,12 @@ type jsonLayoutField struct {
 // keepTags is false, struct field tags are omitted from inspect-mode layouts
 // (mirroring the text inspect behavior); diff-mode findings carry tags inside
 // `original` / `proposed` only when the upstream align phase preserved them.
-func (p *Printer) RenderJSON(version string, findings []common.Finding, layouts []common.Layout, keepTags bool) {
+func (p *Printer) RenderJSON(version string, inspect bool, findings []common.Finding, layouts []common.Layout, keepTags bool) {
 	doc := jsonDocument{
 		Version: version,
 	}
 
-	if layouts != nil {
+	if inspect {
 		doc.Mode = "inspect"
 		doc.Layouts = make([]jsonLayout, len(layouts))
 		for i, l := range layouts {
@@ -133,6 +132,6 @@ func (p *Printer) RenderJSON(version string, findings []common.Finding, layouts 
 	enc := json.NewEncoder(p.Out)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(doc); err != nil {
-		fmt.Fprintf(os.Stderr, "structalign: json encode: %v\n", err)
+		fmt.Fprintf(p.err(), "structalign: json encode: %v\n", err)
 	}
 }

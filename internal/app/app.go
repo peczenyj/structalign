@@ -226,6 +226,7 @@ func (a *App) Run(args []string) int {
 
 	printer := &ui.Printer{
 		Out:   a.Stdout,
+		Err:   a.Stderr,
 		Color: ui.WantColor(opt.colorize, stdoutFile(a.Stdout)),
 		Width: width,
 		Theme: theme,
@@ -278,10 +279,10 @@ func (a *App) Run(args []string) int {
 	}
 
 	if !opt.inspect && opt.threshold > 0 {
-		min := int64(opt.threshold)
+		minSavings := int64(opt.threshold)
 		kept := allFindings[:0]
 		for _, f := range allFindings {
-			if savings(f) >= min {
+			if savings(f) >= minSavings {
 				kept = append(kept, f)
 			}
 		}
@@ -304,10 +305,10 @@ func (a *App) Run(args []string) int {
 	if opt.format == common.FormatJSON {
 		if opt.inspect {
 			total = len(allLayouts)
-			printer.RenderJSON(resolveVersion(), nil, allLayouts, opt.tags)
+			printer.RenderJSON(resolveVersion(), true, nil, allLayouts, opt.tags)
 		} else {
 			total = len(allFindings)
-			printer.RenderJSON(resolveVersion(), allFindings, nil, opt.tags)
+			printer.RenderJSON(resolveVersion(), false, allFindings, nil, opt.tags)
 		}
 	} else {
 		if opt.inspect {
@@ -324,9 +325,9 @@ func (a *App) Run(args []string) int {
 			printer.RenderSummary(total, bytesSaved)
 		} else if total == 0 {
 			if opt.inspect {
-				fmt.Fprintln(a.Stderr, "no matching structs found")
+				fmt.Fprintln(a.Stderr, "structalign: no matching structs found")
 			} else {
-				fmt.Fprintln(a.Stderr, "no struct reorderings found")
+				fmt.Fprintln(a.Stderr, "structalign: no struct reorderings found")
 			}
 		}
 	}
@@ -355,7 +356,11 @@ var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
 // Returns the chosen theme name, whether RC loading is disabled, and the args
 // slice. The egg flags are stripped; -no-rc is left in place so fs.Parse can
 // also bind it to opt.noRC. Stops at the first "--" separator.
+//
+//nolint:gocyclo // parsing early flags and easter eggs naturally involves high branching
 func (a *App) scanEarlyFlags(args []string) (theme string, noRC bool, filtered []string) {
+	noRCEnv := os.Getenv("STRUCTALIGN_NO_RC")
+	noRC = noRCEnv == "true" || noRCEnv == "1"
 	filtered = make([]string, 0, len(args))
 	afterDD := false
 	for _, arg := range args {

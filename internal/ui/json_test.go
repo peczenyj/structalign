@@ -24,22 +24,25 @@ func TestRenderJSON(t *testing.T) {
 	}{
 		{"json_diff_mixed", "diff_mixed.json.golden", func(p *ui.Printer) {
 			f, _ := al.Findings(tgt, common.Options{Patterns: []string{"Mixed"}})
-			p.RenderJSON("v0.7.0-test", f, nil, false)
+			p.RenderJSON("v0.7.0-test", false, f, nil, false)
 		}},
 		{"json_inspect_mixed", "inspect_mixed.json.golden", func(p *ui.Printer) {
 			l := in.Layouts(tgt, common.Options{Patterns: []string{"Mixed"}})
-			p.RenderJSON("v0.7.0-test", nil, l, false)
+			p.RenderJSON("v0.7.0-test", true, nil, l, false)
 		}},
 		{"json_inspect_tagged_notags", "inspect_notags_tagged.json.golden", func(p *ui.Printer) {
 			l := in.Layouts(tgt, common.Options{Patterns: []string{"Tagged"}})
-			p.RenderJSON("v0.7.0-test", nil, l, false)
+			p.RenderJSON("v0.7.0-test", true, nil, l, false)
 		}},
 		{"json_inspect_tagged_keeptags", "inspect_tags_tagged.json.golden", func(p *ui.Printer) {
 			l := in.Layouts(tgt, common.Options{Patterns: []string{"Tagged"}})
-			p.RenderJSON("v0.7.0-test", nil, l, true)
+			p.RenderJSON("v0.7.0-test", true, nil, l, true)
 		}},
 		{"json_empty", "empty.json.golden", func(p *ui.Printer) {
-			p.RenderJSON("v0.7.0-test", nil, nil, false)
+			p.RenderJSON("v0.7.0-test", false, nil, nil, false)
+		}},
+		{"json_empty_inspect", "empty_inspect.json.golden", func(p *ui.Printer) {
+			p.RenderJSON("v0.7.0-test", true, nil, nil, false)
 		}},
 	}
 

@@ -92,3 +92,21 @@ func TestInGeneratedFile_NotGenerated(t *testing.T) {
 	pos := obj.Pos()
 	assert.False(t, structfilter.InGeneratedFile(tgt, pos), "Foo in non-generated file should return false")
 }
+
+func TestHasCacheLinePad_WithAliasedPad(t *testing.T) {
+	cpuPkg := types.NewPackage("golang.org/x/sys/cpu", "cpu")
+	underlying := types.NewStruct(nil, nil)
+	named := types.NewNamed(
+		types.NewTypeName(token.NoPos, cpuPkg, "CacheLinePad", nil),
+		underlying,
+		nil)
+
+	// Create an alias to named
+	aliasPkg := types.NewPackage("my/pkg", "pkg")
+	aliasTypeName := types.NewTypeName(token.NoPos, aliasPkg, "MyPadAlias", nil)
+	alias := types.NewAlias(aliasTypeName, named)
+
+	padField := types.NewField(token.NoPos, aliasPkg, "_", alias, false)
+	st := types.NewStruct([]*types.Var{padField}, nil)
+	assert.True(t, structfilter.HasCacheLinePad(st), "struct with aliased CacheLinePad field should be detected")
+}
