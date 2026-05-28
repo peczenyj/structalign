@@ -5,7 +5,7 @@ package layout
 import (
 	"go/token"
 	"go/types"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/peczenyj/structalign/internal/match"
@@ -66,7 +66,7 @@ func (i *Inspector) discoverStructNames(t common.Target) []string {
 			}
 		}
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 	return names
 }
 

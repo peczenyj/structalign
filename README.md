@@ -342,7 +342,7 @@ structalign -inspect -type='*ID*' ./pkg     # inspect just ID-related structs
 
 ### Scanning scope
 
-By default structalign analyzes the regular, hand-written source of each package.
+By default, structalign analyzes the regular, hand-written source of each package.
 A few flags adjust what's in scope:
 
 ```sh

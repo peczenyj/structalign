@@ -9,7 +9,7 @@ import (
 	"os"
 	"regexp"
 	"runtime/debug"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/peczenyj/structalign/internal/align"
@@ -211,7 +211,9 @@ func (a *App) Run(args []string) int {
 		fmt.Fprintf(a.Stderr, "structalign: %v\n", err)
 		return 2
 	}
-	sort.Slice(targets, func(i, j int) bool { return targets[i].PkgPath < targets[j].PkgPath })
+	slices.SortFunc(targets, func(a, b common.Target) int {
+		return strings.Compare(a.PkgPath, b.PkgPath)
+	})
 
 	var allFindings []common.Finding
 	var allLayouts []common.Layout
@@ -258,12 +260,12 @@ func (a *App) Run(args []string) int {
 
 	if opt.sort {
 		if opt.inspect {
-			sort.SliceStable(allLayouts, func(i, j int) bool {
-				return allLayouts[i].Total > allLayouts[j].Total
+			slices.SortStableFunc(allLayouts, func(a, b common.Layout) int {
+				return cmp(b.Total, a.Total)
 			})
 		} else {
-			sort.SliceStable(allFindings, func(i, j int) bool {
-				return savings(allFindings[i]) > savings(allFindings[j])
+			slices.SortStableFunc(allFindings, func(a, b common.Finding) int {
+				return cmp(savings(b), savings(a))
 			})
 		}
 	}
@@ -294,13 +296,23 @@ func (a *App) Run(args []string) int {
 	return 0
 }
 
+func cmp[T ~int | ~int64](a, b T) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
 var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
 
 // stripEggFlags scans args for retro-theme "easter egg" flags, returning the
 // chosen theme name and the args slice with those flags removed. It stops at
 // the first "--" separator.
 func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
-	filtered = args[:0:0]
+	filtered = make([]string, 0, len(args))
 	afterDD := false
 	for _, arg := range args {
 		if afterDD || arg == "--" {

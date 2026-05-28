@@ -12,7 +12,7 @@ import (
 	"go/types"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -43,6 +43,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		return nil, nil
 	}
 	names := structNameIndex(t.Syntax)
+	structs := structTypeIndex(t.Syntax, t.TypesInfo)
 	nolints := nolintIndex(t.Syntax, t.Fset)
 	insp := inspector.New(t.Syntax)
 
@@ -56,7 +57,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		TypesSizes: t.Sizes, // common.Sizes satisfies types.Sizes
 		ResultOf:   map[*analysis.Analyzer]any{inspect.Analyzer: insp},
 		Report: func(d analysis.Diagnostic) {
-			f := buildFinding(t, d, names, nolints, opts)
+			f := buildFinding(t, d, names, structs, nolints, opts)
 			if f == nil {
 				return
 			}
@@ -66,12 +67,12 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 	if _, err := fieldalignment.Analyzer.Run(pass); err != nil {
 		return nil, fmt.Errorf("%s: analyzer: %w", t.PkgPath, err)
 	}
-	sort.Slice(findings, func(i, j int) bool {
-		pi, pj := t.Fset.Position(findings[i].Pos), t.Fset.Position(findings[j].Pos)
-		if pi.Filename != pj.Filename {
-			return pi.Filename < pj.Filename
+	slices.SortFunc(findings, func(a, b common.Finding) int {
+		pa, pb := t.Fset.Position(a.Pos), t.Fset.Position(b.Pos)
+		if pa.Filename != pb.Filename {
+			return strings.Compare(pa.Filename, pb.Filename)
 		}
-		return pi.Offset < pj.Offset
+		return pa.Offset - pb.Offset
 	})
 	return findings, nil
 }
@@ -79,7 +80,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 // buildFinding converts one analyzer diagnostic into a Finding, applying tag
 // stripping and all active filters. Returns nil when the finding should be
 // suppressed.
-func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
+func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, structs map[token.Pos]*types.Struct, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
 	f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
 	if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
 		e := d.SuggestedFixes[0].TextEdits[0]
@@ -105,7 +106,7 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 	if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, f.Pos) {
 		return nil
 	}
-	if opts.SkipCachePadded && isCachePadded(t, f.Name) {
+	if opts.SkipCachePadded && isCachePadded(t, f.Pos, f.Name, structs) {
 		return nil
 	}
 	if opts.RespectNolint {
@@ -116,9 +117,12 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 	return &f
 }
 
-// isCachePadded reports whether the named type in t's scope contains a
-// cpu.CacheLinePad field. Returns false for anonymous structs or missing names.
-func isCachePadded(t common.Target, name string) bool {
+// isCachePadded reports whether the struct at pos (or the named type name)
+// contains a cpu.CacheLinePad field.
+func isCachePadded(t common.Target, pos token.Pos, name string, structs map[token.Pos]*types.Struct) bool {
+	if st, ok := structs[pos]; ok {
+		return structfilter.HasCacheLinePad(st)
+	}
 	if name == "" {
 		return false
 	}
@@ -186,6 +190,25 @@ func structNameIndex(files []*ast.File) map[token.Pos]string {
 			}
 			if st, ok := ts.Type.(*ast.StructType); ok {
 				index[st.Pos()] = ts.Name.Name
+			}
+			return true
+		})
+	}
+	return index
+}
+
+// structTypeIndex maps the position of every StructType node in the syntax to
+// its underlying types.Struct, for both named and anonymous structs.
+func structTypeIndex(files []*ast.File, info *types.Info) map[token.Pos]*types.Struct {
+	index := make(map[token.Pos]*types.Struct)
+	for _, f := range files {
+		ast.Inspect(f, func(n ast.Node) bool {
+			if st, ok := n.(*ast.StructType); ok {
+				if tv, ok := info.Types[st]; ok {
+					if s, ok := tv.Type.Underlying().(*types.Struct); ok {
+						index[st.Pos()] = s
+					}
+				}
 			}
 			return true
 		})

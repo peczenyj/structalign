@@ -335,6 +335,9 @@ func layoutComments(fields []common.LayoutField, verbose bool) (comments []strin
 func indent(s, pad string) string {
 	lines := strings.Split(s, "\n")
 	for i, l := range lines {
+		if i == len(lines)-1 && l == "" {
+			break
+		}
 		lines[i] = pad + l
 	}
 	return strings.Join(lines, "\n")
