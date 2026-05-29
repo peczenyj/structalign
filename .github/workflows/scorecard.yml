@@ -21,11 +21,9 @@ jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
-    # `publish_results: true` only works when run from the default branch. conditional can be removed if disabled.
-    if: github.event.repository.default_branch == github.ref_name || github.event_name == 'pull_request'
+    # `publish_results: true` only works when run from the default branch.
+    if: github.event.repository.default_branch == github.ref_name
     permissions:
-      # Needed to upload the results to code-scanning dashboard.
-      security-events: write
       # Needed to publish results and get a badge (see publish_results below).
       id-token: write
       # Uncomment the permissions below if installing in a private repository.
@@ -70,9 +68,11 @@ jobs:
           path: results.sarif
           retention-days: 5
 
-      # Upload the results to GitHub's code scanning dashboard (optional).
-      # Commenting out will disable upload of results to your repo's Code Scanning dashboard
-      - name: "Upload to code-scanning"
-        uses: github/codeql-action/upload-sarif@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
-        with:
-          sarif_file: results.sarif
+      # NOTE: we deliberately do NOT upload the SARIF to GitHub code scanning.
+      # Scorecard only runs on the default branch (push/schedule), so its
+      # code-scanning configuration has no counterpart on PR heads, which makes
+      # GitHub emit "Code scanning cannot determine the alerts introduced by this
+      # pull request, because 1 configuration ... was not found" on every PR.
+      # Results are still published to the OpenSSF API (publish_results: true,
+      # which feeds the badge) and uploaded as a SARIF artifact above; view them
+      # at https://scorecard.dev/viewer/?uri=github.com/peczenyj/structalign .
