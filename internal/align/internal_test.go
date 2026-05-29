@@ -33,12 +33,23 @@ func TestIsCachePaddedFallback(t *testing.T) {
 	assert.False(t, isCachePadded(tgt, token.NoPos, "", structs))
 }
 
-func TestStripStructTagsError(t *testing.T) {
-	_, err := stripStructTags("invalid struct {")
+func TestNormalizeStructError(t *testing.T) {
+	_, err := normalizeStruct("invalid struct {", false)
 	assert.Error(t, err)
 
-	_, err = stripStructTags("int") // not a struct
+	_, err = normalizeStruct("int", false) // not a struct
 	assert.Error(t, err)
+}
+
+func TestNormalizeStructStripsComments(t *testing.T) {
+	src := "struct {\n\tA string // trailing\n\t// leading\n\tB int64\n}"
+
+	got, err := normalizeStruct(src, false)
+	assert.NoError(t, err)
+	assert.NotContains(t, got, "// trailing")
+	assert.NotContains(t, got, "// leading")
+	assert.Contains(t, got, "A string")
+	assert.Contains(t, got, "B int64")
 }
 
 func TestFindingsNoSyntax(t *testing.T) {

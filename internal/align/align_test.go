@@ -67,6 +67,45 @@ type Mixed struct {
 }
 `
 
+const commentedSrc = `package sample
+
+type Commented struct {
+	A bool   ` + "`json:\"a\"`" + ` // trailing on A
+	// leading on B
+	B int64  ` + "`json:\"b\"`" + `
+	C bool
+}
+`
+
+func TestFindingsStripsCommentsFromBothSides(t *testing.T) {
+	tgt := testutil.Target(t, commentedSrc)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Commented"}})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+
+	// Upstream drops comments from the proposed text; we strip them from the
+	// original too so the diff shows only the reordering (see issue #88).
+	for _, side := range []string{findings[0].Original, findings[0].Proposed} {
+		assert.NotContains(t, side, "// trailing on A")
+		assert.NotContains(t, side, "// leading on B")
+	}
+}
+
+func TestFindingsKeepTagsStillStripsComments(t *testing.T) {
+	tgt := testutil.Target(t, commentedSrc)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Commented"}, KeepTags: true})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+
+	// Comments go regardless of KeepTags; tags survive on both sides.
+	for _, side := range []string{findings[0].Original, findings[0].Proposed} {
+		assert.NotContains(t, side, "// trailing on A")
+		assert.NotContains(t, side, "// leading on B")
+		assert.Contains(t, side, `json:"a"`)
+		assert.Contains(t, side, `json:"b"`)
+	}
+}
+
 func TestFindingsSkipsGenerated(t *testing.T) {
 	tgt := testutil.Target(t, generatedSrc)
 
