@@ -28,7 +28,7 @@ jobs:
         with:
           go-version: stable
       - name: Install Cosign
-        uses: sigstore/cosign-installer@59acb623e2b6991341b1d1e8a7001d2d622ca219 # v3.5.0
+        uses: sigstore/cosign-installer@59acb6260d9c0ba8f4a2f9d9b48431a222b68e20 # v3.5.0
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:
