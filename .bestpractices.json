@@ -56,6 +56,9 @@
   "vulnerability_report_private_status": "Met",
   "vulnerability_report_private_justification": "SECURITY.md documents a private vulnerability reporting channel (e-mail) and explicitly asks reporters not to use public GitHub issues. https://github.com/peczenyj/structalign/blob/main/SECURITY.md",
 
+  "vulnerability_report_response_status": "Met",
+  "vulnerability_report_response_justification": "SECURITY.md commits to acknowledging a vulnerability report within 7 days and providing an initial assessment and remediation plan within 14 days. https://github.com/peczenyj/structalign/blob/main/SECURITY.md",
+
   "build_status": "Met",
   "build_justification": "The project uses a standard Go toolchain and Taskfile.yml/Makefile for automated builds.",
 
