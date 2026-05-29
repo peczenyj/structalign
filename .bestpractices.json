@@ -1,53 +1,49 @@
 {
   "description_good_status": "Met",
   "description_good_justification": "The project has a clear, comprehensive description and summary of its functionality in README.md.",
-  
+
   "interact_status": "Met",
   "interact_justification": "Users can interact with the project and maintainers via GitHub issues, discussions, and pull requests.",
-  
+
   "contribution_status": "Met",
   "contribution_justification": "Contributing guidelines are clearly documented in CONTRIBUTING.md.",
-  
-  "contribution_quickstart_status": "Met",
-  "contribution_quickstart_justification": "The README.md and CONTRIBUTING.md files include a quick-start guide for new contributors.",
-  
+
+  "contribution_requirements_status": "Met",
+  "contribution_requirements_justification": "CONTRIBUTING.md documents the requirements for contributions, including coding conventions, commit (Conventional Commits) format, and the pull-request process.",
+
   "floss_license_status": "Met",
   "floss_license_justification": "The project is licensed under the MIT license, which is a recognized FLOSS license.",
-  
+
   "floss_license_osi_status": "Met",
   "floss_license_osi_justification": "The MIT license is officially approved by the OSI (Open Source Initiative).",
-  
+
   "build_status": "Met",
   "build_justification": "The project uses a standard Go toolchain and Taskfile.yml/Makefile for automated builds.",
-  
+
   "test_status": "Met",
   "test_justification": "The project includes a robust test suite covering over 190 tests (unit, integration, coverage, and fuzz tests).",
-  
-  "test_suite_status": "Met",
-  "test_suite_justification": "All tests are run automatically via a make/task runner on the command line.",
-  
-  "test_ci_status": "Met",
-  "test_ci_test_status": "Met",
-  "test_ci_justification": "GitHub Actions runs all tests on every push and pull request (defined in ci.yml).",
-  
+
+  "test_invocation_status": "Met",
+  "test_invocation_justification": "All tests are run automatically via the make/task runner on the command line (task test / task ci).",
+
+  "test_continuous_integration_status": "Met",
+  "test_continuous_integration_justification": "GitHub Actions runs all tests on every push and pull request (defined in ci.yml).",
+
   "coding_standards_status": "Met",
   "coding_standards_justification": "We enforce strict coding standards using golangci-lint, go-consistent, and gofumpt formatting in CI.",
-  
-  "coding_standards_tools_status": "Met",
-  "coding_standards_tools_justification": "All styling, consistency, and syntax audits are fully automated using standard static analysis tools.",
-  
+
+  "coding_standards_enforced_status": "Met",
+  "coding_standards_enforced_justification": "All styling, consistency, and syntax audits are fully automated using standard static analysis tools in CI.",
+
   "report_tracker_status": "Met",
   "report_tracker_justification": "GitHub Issues is used as the authoritative bug tracking system.",
-  
-  "vulnerability_report_status": "Met",
-  "vulnerability_report_justification": "The SECURITY.md file outlines the clear process for private/responsible disclosure of vulnerabilities.",
-  
+
+  "vulnerability_report_process_status": "Met",
+  "vulnerability_report_process_justification": "The SECURITY.md file outlines the clear process for private/responsible disclosure of vulnerabilities.",
+
   "static_analysis_status": "Met",
   "static_analysis_justification": "Static application security testing (SAST) is fully automated using GitHub CodeQL.",
-  
+
   "dynamic_analysis_status": "N/A",
-  "dynamic_analysis_justification": "As a static Go tool analyzing code structures locally, there is no long-running server or dynamic state to fuzz dynamically in runtime, making DAST not applicable. We compensate by running extensive native Go fuzzing on all parsing inputs.",
-  
-  "osps_ac_01_01_status": "Met",
-  "osps_ac_01_01_justification": "GitHub strictly mandates and enforces multi-factor authentication (MFA) for all repository write collaborators."
+  "dynamic_analysis_justification": "As a static Go tool analyzing code structures locally, there is no long-running server or dynamic state to fuzz dynamically in runtime, making DAST not applicable. We compensate by running extensive native Go fuzzing on all parsing inputs."
 }
