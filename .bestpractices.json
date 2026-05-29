@@ -44,6 +44,6 @@
   "static_analysis_status": "Met",
   "static_analysis_justification": "Static application security testing (SAST) is fully automated using GitHub CodeQL.",
 
-  "dynamic_analysis_status": "N/A",
-  "dynamic_analysis_justification": "As a static Go tool analyzing code structures locally, there is no long-running server or dynamic state to fuzz dynamically in runtime, making DAST not applicable. We compensate by running extensive native Go fuzzing on all parsing inputs."
+  "dynamic_analysis_status": "Met",
+  "dynamic_analysis_justification": "Dynamic analysis is performed via Go's native fuzzing (go test -fuzz) applied to the parsing/AST inputs, which exercises the code with generated inputs at runtime. (This criterion does not permit an N/A answer.)"
 }
