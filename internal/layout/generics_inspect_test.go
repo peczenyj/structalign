@@ -145,3 +145,27 @@ func TestLayoutsGenericConstraintUnionMulti(t *testing.T) {
 	assert.Equal(t, int64(16), l.Fields[0].Size, "T should default to any (16 bytes) because it has no single core type")
 	assert.Equal(t, "T=any", l.Fields[0].Assume)
 }
+
+func TestLayoutsGenericAliasesAndInterfaces(t *testing.T) {
+	src := `package sample
+
+type Alias[T any] []T
+
+type Box[T any] struct {
+	AliasedField Alias[T]
+	InterfaceField interface{ M(T) }
+}
+`
+	tgt := testutil.Target(t, src)
+
+	got := layout.New().Layouts(tgt, common.Options{Patterns: []string{"Box"}})
+	require.Len(t, got, 1)
+
+	l := got[0]
+	assert.Equal(t, "Box", l.Name)
+	assert.Equal(t, "[T]", l.TypeParams)
+	require.Len(t, l.Fields, 2)
+
+	assert.Equal(t, "T=any", l.Fields[0].Assume, "aliased field should capture T")
+	assert.Equal(t, "T=any", l.Fields[1].Assume, "interface field should capture T")
+}

@@ -28,10 +28,16 @@ linters:
       severity: warning
   exclusions:
     rules:
-      - path: _test\.go
+      - path: '_test\.go'
         linters:
           - gocyclo
           - errcheck
+      - linters:
+          - errcheck
+        text: 'fmt\.Fprint'
+      - linters:
+          - revive
+        text: 'exported'
 
 formatters:
   enable:

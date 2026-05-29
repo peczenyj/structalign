@@ -148,7 +148,8 @@ func typeParamNames(t common.Target, name string) string {
 	if !ok {
 		return ""
 	}
-	named, ok := tn.Type().(*types.Named)
+	typ := types.Unalias(tn.Type())
+	named, ok := typ.(*types.Named)
 	if !ok {
 		return ""
 	}

@@ -86,9 +86,18 @@ func DefaultTheme() Theme {
 // Printer renders to Out using the given color/width settings.
 type Printer struct {
 	Out   io.Writer
+	Err   io.Writer // error stream (defaults to os.Stderr if nil)
 	Color bool
 	Width int   // per-side column width for side-by-side diffs
 	Theme Theme // zero value resolves to DefaultTheme
+}
+
+// err returns the configured error stream, or os.Stderr when unset.
+func (p *Printer) err() io.Writer {
+	if p.Err != nil {
+		return p.Err
+	}
+	return os.Stderr
 }
 
 // theme returns the configured theme, or DefaultTheme when unset.

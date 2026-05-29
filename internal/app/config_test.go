@@ -71,4 +71,13 @@ func TestRunLayeredConfig(t *testing.T) {
 		assert.NotContains(t, errb.String(), "config: invalid-key")
 		errb.Reset()
 	})
+
+	t.Run("NoRCEnv", func(t *testing.T) {
+		t.Setenv("STRUCTALIGN_NO_RC", "true")
+		require.NoError(t, os.WriteFile(filepath.Join(cwd, ".structalignrc"), []byte("invalid-key = true\n"), 0o644))
+
+		a.Run([]string{"pkg"})
+		assert.NotContains(t, errb.String(), "config: invalid-key")
+		errb.Reset()
+	})
 }
