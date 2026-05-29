@@ -81,3 +81,49 @@ func TestRunLayeredConfig(t *testing.T) {
 		errb.Reset()
 	})
 }
+
+// TestRunRCUnknownKeys verifies that RC keys which don't map to a flag — the
+// documented "theme is not an RC key" exclusion, and outright typos — are
+// skipped silently, while a real flag given a bad value still warns.
+func TestRunRCUnknownKeys(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", tmp) // empty home rc
+
+	cwd := filepath.Join(tmp, "cwd")
+	require.NoError(t, os.Mkdir(cwd, 0o755))
+	oldCWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(cwd))
+	t.Cleanup(func() { _ = os.Chdir(oldCWD) })
+
+	run := func(t *testing.T, rc string) string {
+		t.Helper()
+		require.NoError(t, os.WriteFile(filepath.Join(cwd, ".structalignrc"), []byte(rc), 0o644))
+
+		var out, errb bytes.Buffer
+		ml := &mocks.Loader{}
+		ma := &mocks.Aligner{}
+		ml.On("Load", "pkg").Return([]common.Target{{PkgPath: "pkg"}}, nil)
+		ma.On("Findings", mock.Anything, mock.Anything).Return(nil, nil)
+		a := &app.App{Loader: ml, Aligner: ma, Stdout: &out, Stderr: &errb}
+		a.Run([]string{"pkg"})
+		return errb.String()
+	}
+
+	t.Run("ThemeKeyIsSilent", func(t *testing.T) {
+		out := run(t, "theme = cga\n")
+		assert.NotContains(t, out, "no such flag")
+		assert.NotContains(t, out, "theme")
+	})
+
+	t.Run("TypoIsSilent", func(t *testing.T) {
+		out := run(t, "totally-bogus-key = 1\n")
+		assert.NotContains(t, out, "no such flag")
+		assert.NotContains(t, out, "totally-bogus-key")
+	})
+
+	t.Run("BadValueForRealFlagWarns", func(t *testing.T) {
+		out := run(t, "threshold = garbage\n")
+		assert.Contains(t, out, "structalign: config: threshold:")
+	})
+}

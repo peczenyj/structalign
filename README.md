@@ -14,6 +14,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
 [![SLSA Build Level 2](https://img.shields.io/badge/SLSA-Build_L2-green.svg)](https://github.com/peczenyj/structalign/attestations)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/peczenyj/structalign/badge)](https://scorecard.dev/viewer/?uri=github.com/peczenyj/structalign)
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/13027/badge)](https://bestpractices.coreinfrastructure.org/projects/13027)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#code-analysis)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
@@ -374,6 +375,36 @@ inspect prints a *struct field layout*, and scalars have no fields. (The
 `builtin` pseudo-package is in the default `-exclude` for the same reason.) To
 see a scalar's size, inspect a struct that contains it — a `string` field shows
 `size: 16` on a 64-bit target.
+
+### JSON output
+
+`-format=json` (or `STRUCTALIGN_FORMAT=json`, or `format = json` in
+`.structalignrc`) emits a single structured document instead of the rendered
+text, for both diff and inspect modes. It carries the same data the text
+renderers show — findings include `original` / `proposed`, `oldSize` /
+`newSize` / `bytesSaved`; inspect layouts include per-field
+`offset` / `size` / `align` / `padding` and the generic `assume` notes.
+
+```
+$ structalign -format=json -type=Mixed ./_example
+{
+  "version": "...",
+  "mode": "diff",
+  "findings": [ ... ],
+  "summary": { "structsAffected": 1, "bytesSaved": 8 }
+}
+```
+
+Two things differ from text mode by design:
+
+- **The diff document always includes the `summary` block** (so a machine
+  consumer always gets the totals). `-summary` only governs the text renderer's
+  trailing summary line.
+- **The presentation flags don't apply.** `-diff`, `-summary`, `-verbose`,
+  `-color`, and `-width` shape the *text* output only; in JSON mode they are
+  ignored, since the consumer renders from the structured fields itself.
+  `-tags` still applies — it gates whether the inspect document's per-field
+  `tag` field is emitted (see [Field tags](#field-tags)).
 
 ### Filtering by type name
 

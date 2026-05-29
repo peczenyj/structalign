@@ -172,6 +172,13 @@ func (a *App) Run(args []string) int {
 		home, _ := os.UserHomeDir()
 		cwd, _ := os.Getwd()
 		for k, v := range config.Load(home, cwd) {
+			// Silently ignore keys that don't map to a flag: this covers the
+			// documented "theme is not an RC key" exclusion as well as typos,
+			// so a stray key never surfaces a "no such flag" warning. A key
+			// that *is* a flag but gets a bad value still warns below.
+			if fs.Lookup(k) == nil {
+				continue
+			}
 			if err := fs.Set(k, v); err != nil {
 				fmt.Fprintf(a.Stderr, "structalign: config: %s: %v\n", k, err)
 			}

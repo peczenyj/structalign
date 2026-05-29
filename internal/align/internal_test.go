@@ -57,8 +57,8 @@ func TestReadSourceErrors(t *testing.T) {
 	// os.ReadFile error
 	assert.Empty(t, readSource(fset, f.Pos(0), f.Pos(5)))
 
-	// Bounds check: stop > len(data)
-	// We need a file that exists but we use offsets past its length.
-	// But readSource reads the file from disk using pf.Name().
-	// It's hard to trigger start < 0 or start > stop with valid token.Pos.
+	// The remaining bounds guards (start < 0, start > stop, stop > len(data))
+	// are intentionally not covered here: readSource derives both offsets from
+	// valid token.Pos values off the same file, so they can't be provoked
+	// without a corrupt FileSet. The guards stay as defense in depth.
 }

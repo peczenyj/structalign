@@ -163,6 +163,14 @@ to swap it back for the internal package — it won't compile from this module.
 - **`align` and `layout` return data, `ui` renders it.** Keep that split: no
   printing in the logic packages, no analysis in `ui`. New output formatting goes
   in `ui`; new analysis/derived fields go on the `common` types.
+- **`-format=json` (`ui.RenderJSON`) is the machine renderer**, parallel to
+  `RenderFindings`/`RenderLayouts`. Two deliberate divergences from the text path:
+  the diff document **always** carries the `summary` block (so consumers always
+  get totals — `-summary` governs only the text trailing line), and the text-only
+  presentation flags (`-diff`, `-summary`, `-verbose`, `-color`, `-width`) are
+  ignored in JSON. `-tags` still gates the inspect field's `tag`. Any encode
+  error is reported on the printer's `Err` stream (`p.err()`, set to
+  `App.Stderr`), not the real `os.Stderr`.
 - **Scan options travel in `common.Options`** (`Patterns`, `KeepTags`,
   `IncludeGenerated`, `SkipCachePadded`, `RespectNolint`, `NolintLinters`), passed
   to `Aligner.Findings` / `Inspector.Layouts`. `align`/`layout` apply the filters
