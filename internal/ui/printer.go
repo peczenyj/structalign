@@ -380,28 +380,11 @@ func truncPad(s string, w int) string {
 	}
 	// expand tabs to 4 spaces for stable columns
 	s = strings.ReplaceAll(s, "\t", "    ")
-	runes := []rune(s)
-	if total := runewidth.StringWidth(s); total <= w {
-		return s + strings.Repeat(" ", w-total)
-	}
-	if w == 1 {
-		return "…"
-	}
-	// Keep the widest prefix that still leaves one cell for the ellipsis, then
-	// pad: a wide rune straddling the boundary can leave the prefix a cell short.
-	width := 0
-	var b strings.Builder
-	for _, r := range runes {
-		rw := runewidth.RuneWidth(r)
-		if width+rw+1 > w { // reserve one cell for "…"
-			break
-		}
-		b.WriteRune(r)
-		width += rw
-	}
-	b.WriteString("…")
-	width++
-	return b.String() + strings.Repeat(" ", w-width)
+	// runewidth.Truncate fits s into w cells, appending "…" (and reserving its
+	// cell) when it has to cut — including the wide-rune-straddling-the-boundary
+	// case. FillRight then right-pads the result to exactly w cells. Both measure
+	// in terminal cells, so CJK and other wide runes count as two.
+	return runewidth.FillRight(runewidth.Truncate(s, w, "…"), w)
 }
 
 // paint renders s in role's style when color is enabled, else returns s plain.
