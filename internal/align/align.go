@@ -87,13 +87,16 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 		f.Pos = e.Pos
 		f.Proposed = string(e.NewText)
 		f.Original = readSource(t.Fset, e.Pos, e.End)
-		if !opts.KeepTags {
-			if s, err := stripStructTags(f.Original); err == nil {
-				f.Original = s
-			}
-			if s, err := stripStructTags(f.Proposed); err == nil {
-				f.Proposed = s
-			}
+		// Upstream fieldalignment discards per-field comments from the proposed
+		// text (it clears each field's Doc/Comment; see golang/go#20744). Run
+		// the original through the same normalization so the side-by-side diff
+		// shows only the reordering, not phantom comment deletions. Tags are
+		// kept on both sides only when KeepTags is set.
+		if s, err := normalizeStruct(f.Original, opts.KeepTags); err == nil {
+			f.Original = s
+		}
+		if s, err := normalizeStruct(f.Proposed, opts.KeepTags); err == nil {
+			f.Proposed = s
 		}
 	}
 	f.Name = names[f.Pos]
@@ -235,15 +238,17 @@ func readSource(fset *token.FileSet, pos, end token.Pos) string {
 	return string(data[start:stop])
 }
 
-// stripStructTags removes field tags from a struct type's source text. It
-// parses the text (wrapped as a type declaration), clears each field's Tag, and
-// reprints it with go/format, which also re-aligns the now-tagless fields. On
-// any parse/format error it returns the error so the caller can fall back to
-// the original text.
-func stripStructTags(src string) (string, error) {
+// normalizeStruct reprints a struct type's source text with per-field comments
+// removed and, unless keepTags is set, field tags cleared. Comments are dropped
+// by parsing without parser.ParseComments, so they never enter the AST and
+// go/format does not emit them; the reprint also re-aligns the fields. This
+// mirrors the normalization upstream fieldalignment applies to the proposed
+// text, keeping both sides of the diff symmetric. On any parse/format error it
+// returns the error so the caller can fall back to the original text.
+func normalizeStruct(src string, keepTags bool) (string, error) {
 	wrapped := "package p\ntype _ " + src
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "", wrapped, parser.ParseComments)
+	file, err := parser.ParseFile(fset, "", wrapped, parser.SkipObjectResolution)
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +263,7 @@ func stripStructTags(src string) (string, error) {
 	if st == nil {
 		return "", fmt.Errorf("no struct type found")
 	}
-	if st.Fields != nil {
+	if !keepTags && st.Fields != nil {
 		for _, fld := range st.Fields.List {
 			fld.Tag = nil
 		}
