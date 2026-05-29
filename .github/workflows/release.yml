@@ -9,15 +9,17 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write # create the GitHub Release and upload assets
-  id-token: write # OIDC token for keyless (Sigstore) signing of the attestation
-  attestations: write # store the SLSA build-provenance attestation
+permissions: read-all
 
 jobs:
   goreleaser:
     name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release and upload assets
+      id-token: write # OIDC token for keyless (Sigstore) signing of the attestation
+      attestations: write # store the SLSA build-provenance attestation
+
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
