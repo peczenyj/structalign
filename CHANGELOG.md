@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-05-29
+
+### Changed
+
+- Pre-v0.7.0 Cleanup: Sorting, Efficiency, and Bug Fixes (#68)
+- Layered Configuration (Env Vars + .structalignrc) (#69)
+- JSON Output Support (-format=json) (#71)
+
+### Fixed
+
+- *(ci)* Pin codeql action to its commit SHA, not the tag object (#63)
+- *(usage)* List -no-rc in -h and document the theme eggs (#74)
+- Address major bugs, unhandled AST aliases, and config issues on devel (#82)
+- Graceful RC keys, JSON encode-error stream, and docs (#87)
+- *(align)* Strip field comments from both diff sides (#89)
+
+### Documentation
+
+- Refresh diff screenshot and drop redundant tag badge (#64)
+
 ## [0.6.1] - 2026-05-27
 
 ### Added
@@ -182,6 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.7.0]: https://github.com/peczenyj/structalign/compare/v0.6.1..v0.7.0
 [0.6.1]: https://github.com/peczenyj/structalign/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/peczenyj/structalign/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/peczenyj/structalign/compare/v0.5.1..v0.5.2
