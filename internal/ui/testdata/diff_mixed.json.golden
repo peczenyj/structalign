@@ -1,0 +1,23 @@
+{
+  "version": "v0.7.0-test",
+  "mode": "diff",
+  "findings": [
+    {
+      "package": "sample",
+      "file": "src.go",
+      "line": 3,
+      "column": 12,
+      "name": "Mixed",
+      "message": "struct of size 24 could be 16",
+      "oldSize": 24,
+      "newSize": 16,
+      "bytesSaved": 8,
+      "original": "struct {\n\tA bool\n\tB int64\n\tC bool\n}",
+      "proposed": "struct {\n\tB int64\n\tA bool\n\tC bool\n}"
+    }
+  ],
+  "summary": {
+    "structsAffected": 1,
+    "bytesSaved": 8
+  }
+}

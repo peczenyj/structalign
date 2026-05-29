@@ -64,7 +64,7 @@ func TestFindingsNolintEmptyGroup(t *testing.T) {
 	_, _ = align.New().Findings(tgt, common.Options{RespectNolint: true})
 }
 
-func TestParseNolintInvalid(t *testing.T) {
+func TestParseNolintInvalid(_ *testing.T) {
 	// Exercise the default branch in parseNolint switch
 	// Use internal package via link or just call it if internal tests allowed.
 	// Actually, this file is align_test. I can't call internal functions unless I use a link.

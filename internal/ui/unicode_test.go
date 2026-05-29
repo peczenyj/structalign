@@ -33,3 +33,10 @@ func TestTruncPadWideRunes(t *testing.T) {
 	// landing exactly on the column with the ellipsis ("世界" = 4 + "…" = 5).
 	assert.Equal(t, "世界…", truncPad("世界世", 5))
 }
+
+func TestIndent(t *testing.T) {
+	// Without trailing newline
+	assert.Equal(t, "  a\n  b", indent("a\nb", "  "))
+	// With trailing newline: the empty line after the last \n should NOT be indented.
+	assert.Equal(t, "  a\n  b\n", indent("a\nb\n", "  "))
+}

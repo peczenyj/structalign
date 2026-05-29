@@ -5,7 +5,7 @@ package layout
 import (
 	"go/token"
 	"go/types"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/peczenyj/structalign/internal/match"
@@ -66,7 +66,7 @@ func (i *Inspector) discoverStructNames(t common.Target) []string {
 			}
 		}
 	}
-	sort.Strings(names)
+	slices.Sort(names)
 	return names
 }
 
@@ -83,6 +83,7 @@ func (i *Inspector) buildLayout(t common.Target, n string, tn *types.TypeName, o
 		return common.Layout{}, false
 	}
 	l := computeLayout(n, st, display, assumed, t.Sizes)
+	l.Package = t.PkgPath
 	l.TypeParams = typeParams
 	l.Note = note
 	return l, true
@@ -214,8 +215,14 @@ func fieldAssume(typ types.Type, assumed []string) string {
 
 // collectTypeParams marks used[tp.Index()] for every type parameter referenced
 // (directly or nested) by typ. seen guards against cycles in recursive types.
+//
+//nolint:gocyclo // traversing Go AST type structures naturally involves many type cases
 func collectTypeParams(typ types.Type, used []bool, seen map[types.Type]bool) {
-	if typ == nil || seen[typ] {
+	if typ == nil {
+		return
+	}
+	typ = types.Unalias(typ)
+	if seen[typ] {
 		return
 	}
 	seen[typ] = true
@@ -241,6 +248,13 @@ func collectTypeParams(typ types.Type, used []bool, seen map[types.Type]bool) {
 	case *types.Signature:
 		collectTupleTypeParams(t.Params(), used, seen)
 		collectTupleTypeParams(t.Results(), used, seen)
+	case *types.Interface:
+		for i := range t.NumExplicitMethods() {
+			collectTypeParams(t.ExplicitMethod(i).Type(), used, seen)
+		}
+		for i := range t.NumEmbeddeds() {
+			collectTypeParams(t.EmbeddedType(i), used, seen)
+		}
 	}
 }
 

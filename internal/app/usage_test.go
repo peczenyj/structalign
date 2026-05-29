@@ -34,6 +34,7 @@ func TestUsageHasManPageSections(t *testing.T) {
 	// PrintDefaults still emits the real flags after the header.
 	assert.Contains(t, u, "-diff", "the flag list is still printed")
 	assert.Contains(t, u, "-inspect")
+	assert.Contains(t, u, "-no-rc", "the -no-rc config flag is discoverable in -h")
 }
 
 func TestUsageOmitsEasterEggs(t *testing.T) {

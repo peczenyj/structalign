@@ -1,0 +1,13 @@
+# OpenSSF Scorecard maintainer annotations
+# These do not change the numeric score but provide context to consumers.
+annotations:
+  - checks:
+      - Code-Review
+    reasons:
+      - reason: not-applicable
+        explanation: >-
+          This is a solo-maintained project. Requiring a second human reviewer 
+          would block all development. We compensate for this by requiring 
+          all changes to go through a Pull Request workflow, enforcing strict 
+          automated CI/CD status checks, and running static analysis (SAST) 
+          on every change.

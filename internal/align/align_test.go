@@ -67,6 +67,45 @@ type Mixed struct {
 }
 `
 
+const commentedSrc = `package sample
+
+type Commented struct {
+	A bool   ` + "`json:\"a\"`" + ` // trailing on A
+	// leading on B
+	B int64  ` + "`json:\"b\"`" + `
+	C bool
+}
+`
+
+func TestFindingsStripsCommentsFromBothSides(t *testing.T) {
+	tgt := testutil.Target(t, commentedSrc)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Commented"}})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+
+	// Upstream drops comments from the proposed text; we strip them from the
+	// original too so the diff shows only the reordering (see issue #88).
+	for _, side := range []string{findings[0].Original, findings[0].Proposed} {
+		assert.NotContains(t, side, "// trailing on A")
+		assert.NotContains(t, side, "// leading on B")
+	}
+}
+
+func TestFindingsKeepTagsStillStripsComments(t *testing.T) {
+	tgt := testutil.Target(t, commentedSrc)
+	findings, err := align.New().Findings(tgt, common.Options{Patterns: []string{"Commented"}, KeepTags: true})
+	require.NoError(t, err)
+	require.Len(t, findings, 1)
+
+	// Comments go regardless of KeepTags; tags survive on both sides.
+	for _, side := range []string{findings[0].Original, findings[0].Proposed} {
+		assert.NotContains(t, side, "// trailing on A")
+		assert.NotContains(t, side, "// leading on B")
+		assert.Contains(t, side, `json:"a"`)
+		assert.Contains(t, side, `json:"b"`)
+	}
+}
+
 func TestFindingsSkipsGenerated(t *testing.T) {
 	tgt := testutil.Target(t, generatedSrc)
 
@@ -197,4 +236,39 @@ type WithPad struct {
 	findings, ferr = align.New().Findings(tgt, common.Options{SkipCachePadded: true})
 	require.NoError(t, ferr)
 	assert.Empty(t, findings, "WithPad should be skipped when SkipCachePadded=true")
+}
+
+func TestFindingsSkipsAnonymousCachePadded(t *testing.T) {
+	root := moduleRoot(t)
+	testPkgDir := filepath.Join(root, "internal", "align", "_anoncachepadtest")
+	if err := os.MkdirAll(testPkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(testPkgDir) })
+
+	src := `package anoncachepadtest
+
+import "golang.org/x/sys/cpu"
+
+var V = struct {
+	A bool
+	B int64
+	C bool
+	_ cpu.CacheLinePad
+}{A: true, B: 1, C: true}
+`
+	err := os.WriteFile(filepath.Join(testPkgDir, "types.go"), []byte(src), 0o600)
+	require.NoError(t, err)
+
+	tgt := loadPackageTarget(t, testPkgDir)
+
+	// Without SkipCachePadded, the anonymous struct should be reported.
+	findings, ferr := align.New().Findings(tgt, common.Options{})
+	require.NoError(t, ferr)
+	assert.NotEmpty(t, findings, "Anonymous struct should be reported without SkipCachePadded")
+
+	// With SkipCachePadded=true, the anonymous struct should be silently skipped.
+	findings, ferr = align.New().Findings(tgt, common.Options{SkipCachePadded: true})
+	require.NoError(t, ferr)
+	assert.Empty(t, findings, "Anonymous struct should be skipped when SkipCachePadded=true")
 }

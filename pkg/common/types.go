@@ -24,6 +24,7 @@ type Target struct {
 
 // Finding is one struct whose fields could be reordered to use less memory.
 type Finding struct {
+	Package    string
 	Fset       *token.FileSet
 	Pos        token.Pos
 	Name       string // enclosing named type, or "" for an anonymous struct
@@ -49,6 +50,7 @@ type LayoutField struct {
 
 // Layout is one named struct's computed memory layout.
 type Layout struct {
+	Package    string
 	Name       string
 	TypeParams string // for a generic type, e.g. "[T]" (else "")
 	Note       string // optional caveat shown above the struct (e.g. the generic disclaimer)

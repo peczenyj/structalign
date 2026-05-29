@@ -9,10 +9,11 @@ import (
 	"os"
 	"regexp"
 	"runtime/debug"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/peczenyj/structalign/internal/align"
+	"github.com/peczenyj/structalign/internal/config"
 	"github.com/peczenyj/structalign/internal/layout"
 	"github.com/peczenyj/structalign/internal/loader"
 	"github.com/peczenyj/structalign/internal/match"
@@ -60,6 +61,7 @@ func New(stdout, stderr io.Writer) *App {
 
 type options struct {
 	diff            common.DiffStyle
+	format          common.Format
 	width           int
 	colorize        common.Colorize
 	typeFilter      string
@@ -76,6 +78,7 @@ type options struct {
 	threshold       int
 	showNolint      bool
 	nolintLinters   string
+	noRC            bool
 }
 
 // savings is the absolute bytes a finding saves, or 0 when sizes are unknown or
@@ -98,6 +101,8 @@ func (a *App) Run(args []string) int {
 	fs.SetOutput(a.Stderr)
 	opt.diff = common.DiffUnified // zero value is DiffUnified; set for clarity
 	fs.Var(&opt.diff, "diff", fmt.Sprintf("diff style: %s (default %q)", opt.diff.Type(), opt.diff.String()))
+	opt.format = common.FormatText // zero value is FormatText; set for clarity
+	fs.Var(&opt.format, "format", fmt.Sprintf("output format: %s (default %q)", opt.format.Type(), opt.format.String()))
 	fs.IntVar(&opt.width, "width", 0, "column width per side for -diff=side (0 = auto from terminal)")
 	opt.colorize = common.ColorizeAuto // zero value is ColorizeAuto; set for clarity
 	fs.Var(&opt.colorize, "color", fmt.Sprintf("colorize: %s (default %q)", opt.colorize.Type(), opt.colorize.String()))
@@ -115,6 +120,7 @@ func (a *App) Run(args []string) int {
 	fs.IntVar(&opt.threshold, "threshold", 0, "in diff mode, only show structs that save at least this many bytes")
 	fs.BoolVar(&opt.showNolint, "show-nolint", false, "show structs even when their type carries a recognized //nolint directive")
 	fs.StringVar(&opt.nolintLinters, "nolint-linters", "fieldalignment", "comma-separated //nolint tokens that suppress a finding (bare //nolint always counts)")
+	fs.BoolVar(&opt.noRC, "no-rc", false, "skip loading .structalignrc files")
 	fs.Usage = func() {
 		fmt.Fprint(a.Stderr, //nolint:errcheck
 			"structalign: show how a struct's fields could be reordered to use less memory\n\n",
@@ -134,7 +140,8 @@ func (a *App) Run(args []string) int {
 			"examples:\n",
 			"  structalign ./...                          scan every package in the module\n",
 			"  structalign -diff=side -summary ./...      side-by-side diff plus a total\n",
-			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n\n",
+			"  structalign -inspect -type=Config ./pkg    one struct's per-field layout\n",
+			"  structalign -format=json ./...             machine-readable findings\n\n",
 			"flags:\n")
 		fs.PrintDefaults()
 	}
@@ -155,7 +162,37 @@ func (a *App) Run(args []string) int {
 	// Easter-egg theme flags: -cga/-green/-amber select a retro palette. Like
 	// -fix, they are caught before parsing and stripped from args, so they stay
 	// invisible in -help and never trip "flag provided but not defined".
-	themeName, args := a.stripEggFlags(args)
+	// Also peeks at -no-rc so RC loading (which precedes fs.Parse) can honor it;
+	// the flag itself is still registered with fs so fs.Parse binds opt.noRC and
+	// -h lists it like any other config flag.
+	themeName, noRC, args := a.scanEarlyFlags(args)
+
+	// Apply configuration layers as defaults.
+	if !noRC {
+		home, _ := os.UserHomeDir()
+		cwd, _ := os.Getwd()
+		for k, v := range config.Load(home, cwd) {
+			// Silently ignore keys that don't map to a flag: this covers the
+			// documented "theme is not an RC key" exclusion as well as typos,
+			// so a stray key never surfaces a "no such flag" warning. A key
+			// that *is* a flag but gets a bad value still warns below.
+			if fs.Lookup(k) == nil {
+				continue
+			}
+			if err := fs.Set(k, v); err != nil {
+				fmt.Fprintf(a.Stderr, "structalign: config: %s: %v\n", k, err)
+			}
+		}
+	}
+
+	// Apply environment variables.
+	fs.VisitAll(func(f *flag.Flag) {
+		if val := os.Getenv(config.EnvName(f.Name)); val != "" {
+			if err := fs.Set(f.Name, val); err != nil {
+				fmt.Fprintf(a.Stderr, "structalign: env: %s: %v\n", f.Name, err)
+			}
+		}
+	})
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -196,6 +233,7 @@ func (a *App) Run(args []string) int {
 
 	printer := &ui.Printer{
 		Out:   a.Stdout,
+		Err:   a.Stderr,
 		Color: ui.WantColor(opt.colorize, stdoutFile(a.Stdout)),
 		Width: width,
 		Theme: theme,
@@ -211,7 +249,9 @@ func (a *App) Run(args []string) int {
 		fmt.Fprintf(a.Stderr, "structalign: %v\n", err)
 		return 2
 	}
-	sort.Slice(targets, func(i, j int) bool { return targets[i].PkgPath < targets[j].PkgPath })
+	slices.SortFunc(targets, func(a, b common.Target) int {
+		return strings.Compare(a.PkgPath, b.PkgPath)
+	})
 
 	var allFindings []common.Finding
 	var allLayouts []common.Layout
@@ -246,10 +286,10 @@ func (a *App) Run(args []string) int {
 	}
 
 	if !opt.inspect && opt.threshold > 0 {
-		min := int64(opt.threshold)
+		minSavings := int64(opt.threshold)
 		kept := allFindings[:0]
 		for _, f := range allFindings {
-			if savings(f) >= min {
+			if savings(f) >= minSavings {
 				kept = append(kept, f)
 			}
 		}
@@ -258,34 +298,44 @@ func (a *App) Run(args []string) int {
 
 	if opt.sort {
 		if opt.inspect {
-			sort.SliceStable(allLayouts, func(i, j int) bool {
-				return allLayouts[i].Total > allLayouts[j].Total
+			slices.SortStableFunc(allLayouts, func(a, b common.Layout) int {
+				return cmp(b.Total, a.Total)
 			})
 		} else {
-			sort.SliceStable(allFindings, func(i, j int) bool {
-				return savings(allFindings[i]) > savings(allFindings[j])
+			slices.SortStableFunc(allFindings, func(a, b common.Finding) int {
+				return cmp(savings(b), savings(a))
 			})
 		}
 	}
 
 	var total int
-	if opt.inspect {
-		total = printer.RenderLayouts(allLayouts, opt.verbose, opt.tags)
-	} else {
-		total = printer.RenderFindings(allFindings, opt.diff)
-	}
-
-	if opt.summary && !opt.inspect {
-		var bytesSaved int64
-		for _, f := range allFindings {
-			bytesSaved += savings(f)
-		}
-		printer.RenderSummary(total, bytesSaved)
-	} else if total == 0 {
+	if opt.format == common.FormatJSON {
 		if opt.inspect {
-			fmt.Fprintln(a.Stderr, "no matching structs found")
+			total = len(allLayouts)
+			printer.RenderJSON(resolveVersion(), true, nil, allLayouts, opt.tags)
 		} else {
-			fmt.Fprintln(a.Stderr, "no struct reorderings found")
+			total = len(allFindings)
+			printer.RenderJSON(resolveVersion(), false, allFindings, nil, opt.tags)
+		}
+	} else {
+		if opt.inspect {
+			total = printer.RenderLayouts(allLayouts, opt.verbose, opt.tags)
+		} else {
+			total = printer.RenderFindings(allFindings, opt.diff)
+		}
+
+		if opt.summary && !opt.inspect {
+			var bytesSaved int64
+			for _, f := range allFindings {
+				bytesSaved += savings(f)
+			}
+			printer.RenderSummary(total, bytesSaved)
+		} else if total == 0 {
+			if opt.inspect {
+				fmt.Fprintln(a.Stderr, "structalign: no matching structs found")
+			} else {
+				fmt.Fprintln(a.Stderr, "structalign: no struct reorderings found")
+			}
 		}
 	}
 	if total > 0 && !opt.inspect {
@@ -294,13 +344,31 @@ func (a *App) Run(args []string) int {
 	return 0
 }
 
+func cmp[T ~int | ~int64](a, b T) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
 var eggRE = regexp.MustCompile(`^--?([^=]+)(?:=(.*))?$`)
 
-// stripEggFlags scans args for retro-theme "easter egg" flags, returning the
-// chosen theme name and the args slice with those flags removed. It stops at
-// the first "--" separator.
-func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
-	filtered = args[:0:0]
+// scanEarlyFlags peeks at args ahead of fs.Parse for two reasons: the
+// retro-theme "easter egg" flags (-cga/-green/-amber) are not registered with
+// the FlagSet (they stay invisible in -help) and must be stripped so fs.Parse
+// doesn't reject them; and -no-rc must be known before RC loading runs.
+// Returns the chosen theme name, whether RC loading is disabled, and the args
+// slice. The egg flags are stripped; -no-rc is left in place so fs.Parse can
+// also bind it to opt.noRC. Stops at the first "--" separator.
+//
+//nolint:gocyclo // parsing early flags and easter eggs naturally involves high branching
+func (a *App) scanEarlyFlags(args []string) (theme string, noRC bool, filtered []string) {
+	noRCEnv := os.Getenv("STRUCTALIGN_NO_RC")
+	noRC = noRCEnv == "true" || noRCEnv == "1"
+	filtered = make([]string, 0, len(args))
 	afterDD := false
 	for _, arg := range args {
 		if afterDD || arg == "--" {
@@ -311,6 +379,13 @@ func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
 
 		if m := eggRE.FindStringSubmatch(arg); m != nil {
 			name, val := m[1], m[2]
+			if name == "no-rc" {
+				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
+					noRC = true
+				}
+				filtered = append(filtered, arg)
+				continue
+			}
 			if name == "cga" || name == "green" || name == "amber" {
 				if !strings.Contains(arg, "=") || val == "true" || val == "1" {
 					theme = name
@@ -320,7 +395,7 @@ func (a *App) stripEggFlags(args []string) (theme string, filtered []string) {
 		}
 		filtered = append(filtered, arg)
 	}
-	return theme, filtered
+	return theme, noRC, filtered
 }
 
 // stdoutFile returns the *os.File behind w for terminal queries, or nil when

@@ -1,6 +1,6 @@
 # structalign
 
-[![tag](https://img.shields.io/github/tag/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases)
+[![Latest release](https://img.shields.io/github/release/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.25-%23007d9c)
 [![GoDoc](https://pkg.go.dev/badge/github.com/peczenyj/structalign)](http://pkg.go.dev/github.com/peczenyj/structalign)
 [![CI](https://github.com/peczenyj/structalign/actions/workflows/ci.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/ci.yml)
@@ -9,12 +9,12 @@
 [![CodeQL](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/github-code-scanning/codeql)
 [![Dependency Review](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml/badge.svg)](https://github.com/peczenyj/structalign/actions/workflows/dependency-review.yml)
 [![License](https://img.shields.io/github/license/peczenyj/structalign)](./LICENSE)
-[![Latest release](https://img.shields.io/github/release/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![GitHub Release Date](https://img.shields.io/github/release-date/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/releases/latest)
 [![Last commit](https://img.shields.io/github/last-commit/peczenyj/structalign.svg)](https://github.com/peczenyj/structalign/commit/HEAD)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md#pull-request-process)
 [![SLSA Build Level 2](https://img.shields.io/badge/SLSA-Build_L2-green.svg)](https://github.com/peczenyj/structalign/attestations)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/peczenyj/structalign/badge)](https://scorecard.dev/viewer/?uri=github.com/peczenyj/structalign)
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/13027/badge)](https://bestpractices.coreinfrastructure.org/projects/13027)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/avelino/awesome-go#code-analysis)
 
 > See how reordering a Go struct's fields could save memory — as a **diff**, not a
@@ -27,9 +27,7 @@ also print any struct's offset/size/align/padding layout. The analysis comes
 straight from the upstream analyzer, so results match `fieldalignment` exactly —
 only the presentation is new.
 
-<p align="center">
-  <img src="docs/diff.png" alt="structalign colored unified-diff output against the bundled sample" width="640">
-</p>
+![structalign colored unified-diff output against the bundled sample](docs/diff.png)
 
 ## Quick start
 
@@ -133,6 +131,7 @@ structalign [flags] [packages]
                   single .go files (defaults the go tool understands)
 
   -diff value     diff style: unified|side|none       (default "unified")
+  -format value   output format: text|json           (default "text")
   -width int      column width per side for -diff=side (default: auto from terminal)
   -color value    colorize: auto|always|never         (default "auto")
   -inspect        inspect layout instead of diffing: print each struct as
@@ -158,7 +157,7 @@ structalign [flags] [packages]
   -nolint-linters string
                   //nolint tokens that suppress a finding (default
                   "fieldalignment"; a bare //nolint always counts)
-
+  -no-rc          skip loading .structalignrc files
   -version        print version and exit
 ```
 
@@ -166,7 +165,54 @@ In the default `-color=auto`, color is emitted only when stdout is a terminal an
 the [`NO_COLOR`](https://no-color.org) environment variable is unset. `NO_COLOR`
 (any non-empty value) disables color; an explicit `-color=always` overrides it.
 
+### Configuration
+
+`structalign` supports persistent defaults via environment variables and
+`.structalignrc` files. Precedence (highest wins):
+
+1. **CLI flags** (e.g. `structalign -sort`)
+2. **Environment variables**: `STRUCTALIGN_<FLAG>`, e.g. `STRUCTALIGN_SORT=true`.
+3. **Local config**: `.structalignrc` in the current directory.
+4. **Global config**: `~/.structalignrc`.
+
+The configuration files use a simple `key = value` format:
+
+```ini
+# .structalignrc example
+sort = true
+threshold = 8
+skip-cache-padded = true
+```
+
+Keys map directly to flag names. To skip loading configuration files (e.g. in
+CI), use the `-no-rc` flag. Note that **theme** is not an RC key; set it via the
+`STRUCTALIGN_THEME` environment variable.
+
+#### Configuration Reference
+
+| Feature | CLI Flag | Environment Variable | RC Key | Default |
+|---------|----------|----------------------|--------|---------|
+| Diff style | `-diff` | `STRUCTALIGN_DIFF` | `diff` | `unified` |
+| Output format | `-format` | `STRUCTALIGN_FORMAT` | `format` | `text` |
+| Column width | `-width` | `STRUCTALIGN_WIDTH` | `width` | `0` (auto) |
+| Color mode | `-color` | `STRUCTALIGN_COLOR` | `color` | `auto` |
+| Theme palette | — | `STRUCTALIGN_THEME` | — | `default` |
+| Inspect mode | `-inspect` | `STRUCTALIGN_INSPECT` | `inspect` | `false` |
+| Verbose inspect | `-verbose` | `STRUCTALIGN_VERBOSE` | `verbose` | `false` |
+| Keep tags | `-tags` | `STRUCTALIGN_TAGS` | `tags` | `false` |
+| Show summary | `-summary` | `STRUCTALIGN_SUMMARY` | `summary` | `false` |
+| Largest-first sort | `-sort` | `STRUCTALIGN_SORT` | `sort` | `false` |
+| Min bytes saved | `-threshold` | `STRUCTALIGN_THRESHOLD` | `threshold` | `0` |
+| Type filter | `-type` | `STRUCTALIGN_TYPE` | `type` | (empty) |
+| Package exclude | `-exclude` | `STRUCTALIGN_EXCLUDE` | `exclude` | `^unsafe$\|^builtin$` |
+| Include generated | `-generated` | `STRUCTALIGN_GENERATED` | `generated` | `false` |
+| Include tests | `-tests` | `STRUCTALIGN_TESTS` | `tests` | `false` |
+| Skip cache padded | `-skip-cache-padded` | `STRUCTALIGN_SKIP_CACHE_PADDED` | `skip-cache-padded` | `false` |
+| Show //nolint | `-show-nolint` | `STRUCTALIGN_SHOW_NOLINT` | `show-nolint` | `false` |
+| Nolint linters | `-nolint-linters` | `STRUCTALIGN_NOLINT_LINTERS` | `nolint-linters` | `fieldalignment` |
+
 The palette can be switched with the `STRUCTALIGN_THEME` environment variable —
+... Applied fuzzy match at line 147.
 `default` (the standard colors), `cga` (the iconic cyan/magenta/white CGA palette,
 with a reverse-video header bar), or `green` / `amber` (single-hue phosphor-monitor
 emulations). It only affects *which* colors
@@ -328,6 +374,36 @@ inspect prints a *struct field layout*, and scalars have no fields. (The
 see a scalar's size, inspect a struct that contains it — a `string` field shows
 `size: 16` on a 64-bit target.
 
+### JSON output
+
+`-format=json` (or `STRUCTALIGN_FORMAT=json`, or `format = json` in
+`.structalignrc`) emits a single structured document instead of the rendered
+text, for both diff and inspect modes. It carries the same data the text
+renderers show — findings include `original` / `proposed`, `oldSize` /
+`newSize` / `bytesSaved`; inspect layouts include per-field
+`offset` / `size` / `align` / `padding` and the generic `assume` notes.
+
+```
+$ structalign -format=json -type=Mixed ./_example
+{
+  "version": "...",
+  "mode": "diff",
+  "findings": [ ... ],
+  "summary": { "structsAffected": 1, "bytesSaved": 8 }
+}
+```
+
+Two things differ from text mode by design:
+
+- **The diff document always includes the `summary` block** (so a machine
+  consumer always gets the totals). `-summary` only governs the text renderer's
+  trailing summary line.
+- **The presentation flags don't apply.** `-diff`, `-summary`, `-verbose`,
+  `-color`, and `-width` shape the *text* output only; in JSON mode they are
+  ignored, since the consumer renders from the structured fields itself.
+  `-tags` still applies — it gates whether the inspect document's per-field
+  `tag` field is emitted (see [Field tags](#field-tags)).
+
 ### Filtering by type name
 
 `-type` takes a comma-separated list of glob patterns (`path.Match` syntax: `*`,
@@ -343,7 +419,7 @@ structalign -inspect -type='*ID*' ./pkg     # inspect just ID-related structs
 
 ### Scanning scope
 
-By default structalign analyzes the regular, hand-written source of each package.
+By default, structalign analyzes the regular, hand-written source of each package.
 A few flags adjust what's in scope:
 
 ```sh
@@ -393,7 +469,10 @@ type Tagged struct { // size: 48, align: 8, padding: 18
 ```
 
 Tags never affect the layout numbers (size/offset/alignment are independent of
-tags), so stripping them changes only the display, never the analysis.
+tags), so stripping them changes only the display, never the analysis. The same
+flag governs JSON output: with `-format=json`, the inspect document's `tag`
+field is emitted only when `-tags` (or `STRUCTALIGN_TAGS=true`, or `tags = true`
+in `.structalignrc`) is in effect.
 
 ## How it works
 
@@ -475,6 +554,22 @@ diffing uses `go-udiff` rather than x/tools' own diff package:
   `github.com/peczenyj/structalign` (not under `golang.org/x/tools/`), so the
   compiler rejects it. `go-udiff` is a public port of the same gopls diff code,
   so the results are equivalent.
+
+## Easter eggs
+
+A few hidden flags are intentionally kept out of `-help` and the flag table above:
+**`-cga`, `-green`, `-amber`** — shortcuts for the retro-theme palettes otherwise
+selected with `STRUCTALIGN_THEME=…`. Pick one per invocation; the egg flag wins
+over the environment variable.
+
+```sh
+structalign -cga ./...                     # cyan/magenta/white CGA palette
+structalign -green -inspect ./_example     # single-hue green-phosphor look
+structalign -amber -diff=side ./...        # amber-phosphor side-by-side diff
+```
+
+They are stripped before flag parsing, so they never trip *"flag provided but not
+defined"* when combined with normal flags.
 
 ## Changelog
 

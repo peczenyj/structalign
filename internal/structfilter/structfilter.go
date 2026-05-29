@@ -25,7 +25,8 @@ func InGeneratedFile(t common.Target, pos token.Pos) bool {
 // golang.org/x/sys/cpu.CacheLinePad (the false-sharing guard).
 func HasCacheLinePad(st *types.Struct) bool {
 	for i := range st.NumFields() {
-		named, ok := st.Field(i).Type().(*types.Named)
+		typ := types.Unalias(st.Field(i).Type())
+		named, ok := typ.(*types.Named)
 		if !ok {
 			continue
 		}

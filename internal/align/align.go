@@ -12,7 +12,7 @@ import (
 	"go/types"
 	"os"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -43,6 +43,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		return nil, nil
 	}
 	names := structNameIndex(t.Syntax)
+	structs := structTypeIndex(t.Syntax, t.TypesInfo)
 	nolints := nolintIndex(t.Syntax, t.Fset)
 	insp := inspector.New(t.Syntax)
 
@@ -56,7 +57,7 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 		TypesSizes: t.Sizes, // common.Sizes satisfies types.Sizes
 		ResultOf:   map[*analysis.Analyzer]any{inspect.Analyzer: insp},
 		Report: func(d analysis.Diagnostic) {
-			f := buildFinding(t, d, names, nolints, opts)
+			f := buildFinding(t, d, names, structs, nolints, opts)
 			if f == nil {
 				return
 			}
@@ -66,12 +67,12 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 	if _, err := fieldalignment.Analyzer.Run(pass); err != nil {
 		return nil, fmt.Errorf("%s: analyzer: %w", t.PkgPath, err)
 	}
-	sort.Slice(findings, func(i, j int) bool {
-		pi, pj := t.Fset.Position(findings[i].Pos), t.Fset.Position(findings[j].Pos)
-		if pi.Filename != pj.Filename {
-			return pi.Filename < pj.Filename
+	slices.SortFunc(findings, func(a, b common.Finding) int {
+		pa, pb := t.Fset.Position(a.Pos), t.Fset.Position(b.Pos)
+		if pa.Filename != pb.Filename {
+			return strings.Compare(pa.Filename, pb.Filename)
 		}
-		return pi.Offset < pj.Offset
+		return pa.Offset - pb.Offset
 	})
 	return findings, nil
 }
@@ -79,20 +80,23 @@ func (a *Aligner) Findings(t common.Target, opts common.Options) ([]common.Findi
 // buildFinding converts one analyzer diagnostic into a Finding, applying tag
 // stripping and all active filters. Returns nil when the finding should be
 // suppressed.
-func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
-	f := common.Finding{Fset: t.Fset, Pos: d.Pos, Message: d.Message}
+func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]string, structs map[token.Pos]*types.Struct, nolints map[token.Pos]nolintInfo, opts common.Options) *common.Finding {
+	f := common.Finding{Package: t.PkgPath, Fset: t.Fset, Pos: d.Pos, Message: d.Message}
 	if len(d.SuggestedFixes) > 0 && len(d.SuggestedFixes[0].TextEdits) > 0 {
 		e := d.SuggestedFixes[0].TextEdits[0]
 		f.Pos = e.Pos
 		f.Proposed = string(e.NewText)
 		f.Original = readSource(t.Fset, e.Pos, e.End)
-		if !opts.KeepTags {
-			if s, err := stripStructTags(f.Original); err == nil {
-				f.Original = s
-			}
-			if s, err := stripStructTags(f.Proposed); err == nil {
-				f.Proposed = s
-			}
+		// Upstream fieldalignment discards per-field comments from the proposed
+		// text (it clears each field's Doc/Comment; see golang/go#20744). Run
+		// the original through the same normalization so the side-by-side diff
+		// shows only the reordering, not phantom comment deletions. Tags are
+		// kept on both sides only when KeepTags is set.
+		if s, err := normalizeStruct(f.Original, opts.KeepTags); err == nil {
+			f.Original = s
+		}
+		if s, err := normalizeStruct(f.Proposed, opts.KeepTags); err == nil {
+			f.Proposed = s
 		}
 	}
 	f.Name = names[f.Pos]
@@ -105,7 +109,7 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 	if !opts.IncludeGenerated && structfilter.InGeneratedFile(t, f.Pos) {
 		return nil
 	}
-	if opts.SkipCachePadded && isCachePadded(t, f.Name) {
+	if opts.SkipCachePadded && isCachePadded(t, f.Pos, f.Name, structs) {
 		return nil
 	}
 	if opts.RespectNolint {
@@ -116,9 +120,12 @@ func buildFinding(t common.Target, d analysis.Diagnostic, names map[token.Pos]st
 	return &f
 }
 
-// isCachePadded reports whether the named type in t's scope contains a
-// cpu.CacheLinePad field. Returns false for anonymous structs or missing names.
-func isCachePadded(t common.Target, name string) bool {
+// isCachePadded reports whether the struct at pos (or the named type name)
+// contains a cpu.CacheLinePad field.
+func isCachePadded(t common.Target, pos token.Pos, name string, structs map[token.Pos]*types.Struct) bool {
+	if st, ok := structs[pos]; ok {
+		return structfilter.HasCacheLinePad(st)
+	}
 	if name == "" {
 		return false
 	}
@@ -144,7 +151,8 @@ func typeParamNames(t common.Target, name string) string {
 	if !ok {
 		return ""
 	}
-	named, ok := tn.Type().(*types.Named)
+	typ := types.Unalias(tn.Type())
+	named, ok := typ.(*types.Named)
 	if !ok {
 		return ""
 	}
@@ -193,6 +201,25 @@ func structNameIndex(files []*ast.File) map[token.Pos]string {
 	return index
 }
 
+// structTypeIndex maps the position of every StructType node in the syntax to
+// its underlying types.Struct, for both named and anonymous structs.
+func structTypeIndex(files []*ast.File, info *types.Info) map[token.Pos]*types.Struct {
+	index := make(map[token.Pos]*types.Struct)
+	for _, f := range files {
+		ast.Inspect(f, func(n ast.Node) bool {
+			if st, ok := n.(*ast.StructType); ok {
+				if tv, ok := info.Types[st]; ok {
+					if s, ok := tv.Type.Underlying().(*types.Struct); ok {
+						index[st.Pos()] = s
+					}
+				}
+			}
+			return true
+		})
+	}
+	return index
+}
+
 // readSource returns the raw source text between two positions.
 func readSource(fset *token.FileSet, pos, end token.Pos) string {
 	pf := fset.File(pos)
@@ -211,15 +238,17 @@ func readSource(fset *token.FileSet, pos, end token.Pos) string {
 	return string(data[start:stop])
 }
 
-// stripStructTags removes field tags from a struct type's source text. It
-// parses the text (wrapped as a type declaration), clears each field's Tag, and
-// reprints it with go/format, which also re-aligns the now-tagless fields. On
-// any parse/format error it returns the error so the caller can fall back to
-// the original text.
-func stripStructTags(src string) (string, error) {
+// normalizeStruct reprints a struct type's source text with per-field comments
+// removed and, unless keepTags is set, field tags cleared. Comments are dropped
+// by parsing without parser.ParseComments, so they never enter the AST and
+// go/format does not emit them; the reprint also re-aligns the fields. This
+// mirrors the normalization upstream fieldalignment applies to the proposed
+// text, keeping both sides of the diff symmetric. On any parse/format error it
+// returns the error so the caller can fall back to the original text.
+func normalizeStruct(src string, keepTags bool) (string, error) {
 	wrapped := "package p\ntype _ " + src
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "", wrapped, parser.ParseComments)
+	file, err := parser.ParseFile(fset, "", wrapped, parser.SkipObjectResolution)
 	if err != nil {
 		return "", err
 	}
@@ -234,7 +263,7 @@ func stripStructTags(src string) (string, error) {
 	if st == nil {
 		return "", fmt.Errorf("no struct type found")
 	}
-	if st.Fields != nil {
+	if !keepTags && st.Fields != nil {
 		for _, fld := range st.Fields.List {
 			fld.Tag = nil
 		}
