@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/aymanbagabas/go-udiff v0.4.1
-	github.com/mattn/go-runewidth v0.0.23
+	github.com/mattn/go-runewidth v0.0.24
 	github.com/muesli/termenv v0.16.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/term v0.43.0
