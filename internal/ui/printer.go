@@ -247,20 +247,23 @@ func (p *Printer) renderSideBySide(a, b string) {
 	}
 
 	sep := " │ "
+	// Clamp once so the divider's strings.Repeat shares truncPad's bound; an
+	// unclamped huge Width would panic there with "makeslice: len out of range".
+	width := min(p.Width, maxColWidth)
 	// Header and divider must share the exact column geometry of the data
 	// rows: each side is `width` columns, joined by sep (" │ "). The divider
 	// mirrors sep as "─┼─" so the ┼ lands directly under every │.
 	// Pad the header text manually (not via %-*s) so it stays correct even
 	// when paint wraps it in ANSI escapes, which %-*s would miscount.
 	fmt.Fprintf(p.Out, "  %s%s%s\n", //nolint:errcheck
-		p.paint(th.Meta, truncPad("current", p.Width)),
+		p.paint(th.Meta, truncPad("current", width)),
 		sep,
 		p.paint(th.Meta, "proposed"))
 	fmt.Fprintf(p.Out, "  %s\n", p.paint(th.Meta, //nolint:errcheck
-		strings.Repeat("─", p.Width)+"─┼─"+strings.Repeat("─", p.Width)))
+		strings.Repeat("─", width)+"─┼─"+strings.Repeat("─", width)))
 	for _, r := range rows {
-		left := truncPad(r.l, p.Width)
-		right := truncPad(r.r, p.Width)
+		left := truncPad(r.l, width)
+		right := truncPad(r.r, width)
 		if r.lc != (Style{}) {
 			left = p.paint(r.lc, left)
 		}
@@ -371,13 +374,21 @@ func withTypeName(src, name string) string {
 	return first + "\n" + rest
 }
 
+// maxColWidth caps the per-side column width. It is far wider than any real
+// terminal and keeps padding allocations bounded: an unclamped huge width
+// (e.g. -width=1<<62) would make FillRight/strings.Repeat attempt a
+// multi-gigabyte allocation and panic with "makeslice: len out of range".
+const maxColWidth = 1 << 16
+
 // truncPad fits s into exactly w display cells: right-padded with spaces when
 // shorter, or truncated with a trailing "…" when longer. Width is measured in
 // terminal cells via runewidth, so CJK and other wide runes count as two.
+// Widths above maxColWidth are clamped.
 func truncPad(s string, w int) string {
 	if w <= 0 {
 		return ""
 	}
+	w = min(w, maxColWidth)
 	// expand tabs to 4 spaces for stable columns
 	s = strings.ReplaceAll(s, "\t", "    ")
 	// runewidth.Truncate fits s into w cells, appending "…" (and reserving its

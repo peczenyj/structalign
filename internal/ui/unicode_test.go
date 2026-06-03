@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"bytes"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,6 +34,26 @@ func TestTruncPadWideRunes(t *testing.T) {
 	// "世界世" is 6 cells; at width 5 it truncates after the second wide rune,
 	// landing exactly on the column with the ellipsis ("世界" = 4 + "…" = 5).
 	assert.Equal(t, "世界…", truncPad("世界世", 5))
+}
+
+// truncPad must be total: an absurd width (e.g. a user-supplied
+// -width=4611686018427387904) must clamp instead of panicking with
+// "makeslice: len out of range" inside FillRight. Found by fuzzing
+// (ClusterFuzzLite, #99); the pre-#94 hand-rolled loop panicked identically.
+func TestTruncPadHugeWidth(t *testing.T) {
+	res := truncPad("x", math.MaxInt)
+	assert.Equal(t, maxColWidth, len(res), "pads to the clamped maximum")
+	assert.Equal(t, "x", res[:1])
+}
+
+// The side-by-side divider (strings.Repeat) must survive a huge Width too.
+func TestRenderSideBySideHugeWidth(t *testing.T) {
+	var buf bytes.Buffer
+	p := &Printer{Out: &buf, Width: math.MaxInt}
+
+	assert.NotPanics(t, func() {
+		p.renderSideBySide("a\nb", "a\nc")
+	})
 }
 
 func TestIndent(t *testing.T) {
