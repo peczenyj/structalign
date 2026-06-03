@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-06-03
+
+### Changed
+
+- *(ui)* Simplify truncPad via runewidth Truncate/FillRight (#94)
+
+### Fixed
+
+- Correct .bestpractices.json criterion field names (#90)
+- Set dynamic_analysis to Met (criterion forbids N/A) (#91)
+- *(ui)* Clamp column width to avoid makeslice panic on huge -width (#101)
+
+### Documentation
+
+- *(pkg/common)* Add comprehensive GoDoc comments for public contracts (#97)
+
 ## [0.7.0] - 2026-05-29
 
 ### Changed
@@ -20,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Address major bugs, unhandled AST aliases, and config issues on devel (#82)
 - Graceful RC keys, JSON encode-error stream, and docs (#87)
 - *(align)* Strip field comments from both diff sides (#89)
+- *(ci)* Correct cosign-installer pinned commit SHA
+- *(ci)* Correct cosign-installer pinned commit SHA
+- *(ci)* Bump cosign-installer to v4.1.2 (cosign v3.0.6)
 
 ### Documentation
 
@@ -202,6 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Focus the README screenshot on the Record type
 - Document file/dir args instead of unsupported ./... (#5)
 
+[0.7.1]: https://github.com/peczenyj/structalign/compare/v0.7.0..v0.7.1
 [0.7.0]: https://github.com/peczenyj/structalign/compare/v0.6.1..v0.7.0
 [0.6.1]: https://github.com/peczenyj/structalign/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/peczenyj/structalign/compare/v0.5.2..v0.6.0
