@@ -9,7 +9,10 @@ package common
 type DiffStyle uint8
 
 const (
+	// DiffUnified displays changes in the standard unified diff format.
 	DiffUnified DiffStyle = iota
+	// DiffSide displays changes in side-by-side columns.
 	DiffSide
+	// DiffNone suppresses diff rendering.
 	DiffNone
 )

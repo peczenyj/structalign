@@ -9,6 +9,8 @@ package common
 type Format uint8
 
 const (
+	// FormatText produces human-readable, formatted terminal or plain text output.
 	FormatText Format = iota
+	// FormatJSON produces machine-readable JSON output representing findings or layouts.
 	FormatJSON
 )

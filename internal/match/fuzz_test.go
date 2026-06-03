@@ -1,10 +1,9 @@
-package match_test
+// Package-internal (not match_test) so ClusterFuzzLite's
+// compile_native_go_fuzzer can rewrite this file: an external test package
+// would clash with the non-test package during the go-118-fuzz-build rewrite.
+package match
 
-import (
-	"testing"
-
-	"github.com/peczenyj/structalign/internal/match"
-)
+import "testing"
 
 func FuzzMatchAny(f *testing.F) {
 	f.Add("Mixed", "Mixed")
@@ -12,7 +11,7 @@ func FuzzMatchAny(f *testing.F) {
 	f.Add("", "Mixed")
 
 	f.Fuzz(func(t *testing.T, pattern string, name string) {
-		_ = match.MatchAny([]string{pattern}, name)
+		_ = MatchAny([]string{pattern}, name)
 	})
 }
 
@@ -22,6 +21,6 @@ func FuzzSplitCSV(f *testing.F) {
 	f.Add("")
 
 	f.Fuzz(func(t *testing.T, s string) {
-		_ = match.SplitCSV(s)
+		_ = SplitCSV(s)
 	})
 }

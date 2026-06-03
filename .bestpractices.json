@@ -1,53 +1,163 @@
 {
   "description_good_status": "Met",
   "description_good_justification": "The project has a clear, comprehensive description and summary of its functionality in README.md.",
-  
+
   "interact_status": "Met",
   "interact_justification": "Users can interact with the project and maintainers via GitHub issues, discussions, and pull requests.",
-  
+
   "contribution_status": "Met",
-  "contribution_justification": "Contributing guidelines are clearly documented in CONTRIBUTING.md.",
-  
-  "contribution_quickstart_status": "Met",
-  "contribution_quickstart_justification": "The README.md and CONTRIBUTING.md files include a quick-start guide for new contributors.",
-  
+  "contribution_justification": "Contributing guidelines are clearly documented in CONTRIBUTING.md. https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md",
+
+  "contribution_requirements_status": "Met",
+  "contribution_requirements_justification": "CONTRIBUTING.md documents the requirements for contributions, including coding conventions, commit (Conventional Commits) format, and the pull-request process. https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md",
+
   "floss_license_status": "Met",
   "floss_license_justification": "The project is licensed under the MIT license, which is a recognized FLOSS license.",
-  
+
   "floss_license_osi_status": "Met",
   "floss_license_osi_justification": "The MIT license is officially approved by the OSI (Open Source Initiative).",
-  
-  "build_status": "Met",
-  "build_justification": "The project uses a standard Go toolchain and Taskfile.yml/Makefile for automated builds.",
-  
-  "test_status": "Met",
-  "test_justification": "The project includes a robust test suite covering over 190 tests (unit, integration, coverage, and fuzz tests).",
-  
-  "test_suite_status": "Met",
-  "test_suite_justification": "All tests are run automatically via a make/task runner on the command line.",
-  
-  "test_ci_status": "Met",
-  "test_ci_test_status": "Met",
-  "test_ci_justification": "GitHub Actions runs all tests on every push and pull request (defined in ci.yml).",
-  
-  "coding_standards_status": "Met",
-  "coding_standards_justification": "We enforce strict coding standards using golangci-lint, go-consistent, and gofumpt formatting in CI.",
-  
-  "coding_standards_tools_status": "Met",
-  "coding_standards_tools_justification": "All styling, consistency, and syntax audits are fully automated using standard static analysis tools.",
-  
+
+  "documentation_basics_status": "Met",
+  "documentation_basics_justification": "README.md documents how to install and use the tool, including a Quick start, usage, modes, and a full flag reference. https://github.com/peczenyj/structalign/blob/main/README.md",
+
+  "documentation_interface_status": "Met",
+  "documentation_interface_justification": "README.md documents the complete external (CLI) interface: every flag, the package arguments, exit codes, configuration, and the JSON output format. https://github.com/peczenyj/structalign/blob/main/README.md",
+
+  "english_status": "Met",
+  "english_justification": "All project documentation, code comments, issues, and commit messages are written in English.",
+
+  "maintained_status": "Met",
+  "maintained_justification": "The project is actively maintained: see recent commits, tagged releases (latest v0.7.0), and ongoing issue/PR activity.",
+
+  "repo_interim_status": "Met",
+  "repo_interim_justification": "Interim development versions are committed to the public git repository (the default 'devel' branch) between releases, not just at release points.",
+
+  "version_unique_status": "Met",
+  "version_unique_justification": "Each release has a unique version identifier via SemVer git tags (vMAJOR.MINOR.PATCH); the version is embedded in the binary and shown by 'structalign -version'.",
+
+  "version_semver_status": "Met",
+  "version_semver_justification": "Releases follow Semantic Versioning 2.0.0 (e.g. v0.7.0).",
+
+  "version_tags_status": "Met",
+  "version_tags_justification": "Each release is identified by a git tag (vX.Y.Z) on the main branch, which also triggers the release workflow.",
+
+  "release_notes_vulns_status": "N/A",
+  "release_notes_vulns_justification": "No vulnerabilities have been fixed to date, so there are none to enumerate in release notes.",
+
   "report_tracker_status": "Met",
   "report_tracker_justification": "GitHub Issues is used as the authoritative bug tracking system.",
-  
-  "vulnerability_report_status": "Met",
-  "vulnerability_report_justification": "The SECURITY.md file outlines the clear process for private/responsible disclosure of vulnerabilities.",
-  
+
+  "report_archive_status": "Met",
+  "report_archive_justification": "Bug reports and their discussion are publicly archived and searchable in GitHub Issues. https://github.com/peczenyj/structalign/issues",
+
+  "vulnerability_report_process_status": "Met",
+  "vulnerability_report_process_justification": "The SECURITY.md file outlines the clear process for private/responsible disclosure of vulnerabilities. https://github.com/peczenyj/structalign/blob/main/SECURITY.md",
+
+  "vulnerability_report_private_status": "Met",
+  "vulnerability_report_private_justification": "SECURITY.md documents a private vulnerability reporting channel (e-mail) and explicitly asks reporters not to use public GitHub issues. https://github.com/peczenyj/structalign/blob/main/SECURITY.md",
+
+  "vulnerability_report_response_status": "Met",
+  "vulnerability_report_response_justification": "SECURITY.md commits to acknowledging a vulnerability report within 7 days and providing an initial assessment and remediation plan within 14 days. https://github.com/peczenyj/structalign/blob/main/SECURITY.md",
+
+  "build_status": "Met",
+  "build_justification": "The project uses a standard Go toolchain and Taskfile.yml/Makefile for automated builds.",
+
+  "build_floss_tools_status": "Met",
+  "build_floss_tools_justification": "The build uses only FLOSS tools: the Go toolchain, Task (Taskfile), and golangci-lint.",
+
+  "coding_standards_status": "Met",
+  "coding_standards_justification": "We enforce strict coding standards using golangci-lint, go-consistent, and gofumpt formatting in CI.",
+
+  "coding_standards_enforced_status": "Met",
+  "coding_standards_enforced_justification": "All styling, consistency, and syntax audits are fully automated using standard static analysis tools in CI.",
+
+  "test_status": "Met",
+  "test_justification": "The project includes a robust test suite covering over 190 tests (unit, integration, coverage, and fuzz tests).",
+
+  "test_invocation_status": "Met",
+  "test_invocation_justification": "All tests are run automatically via the make/task runner on the command line (task test / task ci).",
+
+  "test_continuous_integration_status": "Met",
+  "test_continuous_integration_justification": "GitHub Actions runs all tests on every push and pull request (defined in ci.yml).",
+
+  "test_most_status": "Met",
+  "test_most_justification": "The automated test suite covers the majority of the code (tracked via Codecov), including unit, integration, golden-output, and fuzz tests.",
+
+  "test_policy_status": "Met",
+  "test_policy_justification": "CONTRIBUTING.md requires changes to be made 'with tests', establishing a policy that new functionality is accompanied by tests. https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md",
+
+  "tests_are_added_status": "Met",
+  "tests_are_added_justification": "Recent pull requests add tests alongside new or changed functionality (e.g. the align and ui packages' unit, golden, and fuzz tests).",
+
+  "tests_documented_added_status": "Met",
+  "tests_documented_added_justification": "The policy of adding tests with changes is documented in CONTRIBUTING.md. https://github.com/peczenyj/structalign/blob/main/CONTRIBUTING.md",
+
+  "warnings_status": "Met",
+  "warnings_justification": "Compiler/linter warnings are enabled and extensive: golangci-lint (many linters), go vet, go-consistent, and gofumpt all run in CI.",
+
+  "warnings_fixed_status": "Met",
+  "warnings_fixed_justification": "CI fails on any lint/vet warning, so warnings are addressed before merge; the default branch is warning-clean.",
+
+  "warnings_strict_status": "Met",
+  "warnings_strict_justification": "A strict, broad golangci-lint configuration is enforced as a required CI gate.",
+
+  "crypto_published_status": "N/A",
+  "crypto_published_justification": "The software performs no cryptographic operations; it is a static Go source analyzer that makes no network calls.",
+
+  "crypto_call_status": "N/A",
+  "crypto_call_justification": "The software implements and calls no cryptographic functionality.",
+
+  "crypto_floss_status": "N/A",
+  "crypto_floss_justification": "The software uses no cryptography.",
+
+  "crypto_keylength_status": "N/A",
+  "crypto_keylength_justification": "The software uses no cryptography and therefore no cryptographic keys.",
+
+  "crypto_working_status": "N/A",
+  "crypto_working_justification": "The software uses no cryptographic algorithms or modes.",
+
+  "crypto_weaknesses_status": "N/A",
+  "crypto_weaknesses_justification": "The software uses no cryptography.",
+
+  "crypto_pfs_status": "N/A",
+  "crypto_pfs_justification": "The software has no network/key-agreement protocols; perfect forward secrecy is not applicable.",
+
+  "crypto_password_storage_status": "N/A",
+  "crypto_password_storage_justification": "The software stores no passwords or user credentials.",
+
+  "crypto_random_status": "N/A",
+  "crypto_random_justification": "The software has no security-relevant need for random values.",
+
+  "delivery_unsigned_status": "Met",
+  "delivery_unsigned_justification": "Releases and source are delivered over HTTPS (GitHub) and via the Go module proxy with checksum-database verification; release archives are additionally signed (cosign) with SLSA build-provenance attestations.",
+
+  "vulnerabilities_fixed_60_days_status": "Met",
+  "vulnerabilities_fixed_60_days_justification": "There are no known unpatched vulnerabilities; any reported would be addressed well within 60 days, per SECURITY.md.",
+
+  "vulnerabilities_critical_fixed_status": "Met",
+  "vulnerabilities_critical_fixed_justification": "There are no known critical vulnerabilities outstanding.",
+
+  "no_leaked_credentials_status": "Met",
+  "no_leaked_credentials_justification": "The repository contains no leaked valid credentials; releases use GitHub's ephemeral GITHUB_TOKEN and keyless OIDC signing, and the repo is scanned via CodeQL and dependency review.",
+
   "static_analysis_status": "Met",
   "static_analysis_justification": "Static application security testing (SAST) is fully automated using GitHub CodeQL.",
-  
-  "dynamic_analysis_status": "N/A",
-  "dynamic_analysis_justification": "As a static Go tool analyzing code structures locally, there is no long-running server or dynamic state to fuzz dynamically in runtime, making DAST not applicable. We compensate by running extensive native Go fuzzing on all parsing inputs.",
-  
-  "osps_ac_01_01_status": "Met",
-  "osps_ac_01_01_justification": "GitHub strictly mandates and enforces multi-factor authentication (MFA) for all repository write collaborators."
+
+  "static_analysis_common_vulnerabilities_status": "Met",
+  "static_analysis_common_vulnerabilities_justification": "GitHub CodeQL covers common vulnerability classes (CWE/OWASP categories) for Go.",
+
+  "static_analysis_fixed_status": "Met",
+  "static_analysis_fixed_justification": "CodeQL findings are triaged and fixed; there are no open static-analysis security findings.",
+
+  "static_analysis_often_status": "Met",
+  "static_analysis_often_justification": "CodeQL static analysis runs automatically on every push and pull request, plus on a schedule.",
+
+  "dynamic_analysis_status": "Met",
+  "dynamic_analysis_justification": "Dynamic analysis is performed via Go's native fuzzing (go test -fuzz) applied to the parsing/AST inputs, which exercises the code with generated inputs at runtime. (This criterion does not permit an N/A answer.)",
+
+  "dynamic_analysis_unsafe_status": "N/A",
+  "dynamic_analysis_unsafe_justification": "The software is written entirely in Go, a memory-safe language, so memory-safety dynamic analysis tools (e.g. valgrind/ASAN) are not applicable; tests additionally run with the Go race detector.",
+
+  "dynamic_analysis_fixed_status": "Met",
+  "dynamic_analysis_fixed_justification": "Defects found via Go fuzzing are fixed; there are no outstanding issues from dynamic analysis."
 }
